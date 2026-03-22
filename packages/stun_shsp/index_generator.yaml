@@ -1,0 +1,18 @@
+index_generator:
+  page_width: 100
+  exclude:
+    - "**.g.dart"
+    - "{_,**/_}*.dart"
+  libraries:
+    - directory_path: lib
+      file_name: stun_shsp
+      name: stun_shsp
+      include:
+        - src/**
+        - generated/**
+      exports:
+        - package: package:stun/stun.dart
+        - package: package:shsp/shsp.dart
+        - package: package:singleton_manager/singleton_manager.dart
+          hide:
+            - RegistryManager
