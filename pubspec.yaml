@@ -1,0 +1,31 @@
+name: stun_shsp_dart
+description: Dart monorepo for STUN and SHSP protocol implementations.
+publish_to: none
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+workspace:
+  - packages/stun_shsp
+  - packages/test
+
+dev_dependencies:
+  melos: ^7.4.1
+
+melos:
+  repository: https://github.com/your-org/stun_shsp_dart
+
+  scripts:
+    test:
+      description: Run tests for all packages
+      exec: dart test
+      packageFilters:
+        dirExists: test
+
+    analyze:
+      description: Analyze all packages
+      exec: dart analyze --fatal-infos
+
+    publish:
+      description: Publish packages (dry run)
+      exec: dart pub publish --dry-run

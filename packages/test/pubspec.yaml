@@ -1,0 +1,16 @@
+name: stun_shsp_test
+description: Integration tests for stun_shsp.
+publish_to: none
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+resolution: workspace
+
+dependencies:
+  stun_shsp:
+    path: ../stun_shsp
+  singleton_manager: ^0.4.0
+
+dev_dependencies:
+  test: ^1.24.0
