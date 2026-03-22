@@ -36,10 +36,21 @@ class StunShspHandler implements IStunShspHandler {
   @isInjected
   late IDualShspSocketMigratable _dualShspSocket;
 
+  /// Injection point used by the generated DI class.
+  /// Not for direct use — call [initialize] or use the DI system instead.
+  void injectDependencies({
+    required StunHandlerBase stunHandler,
+    required IDualShspSocketMigratable dualShspSocket,
+  }) {
+    _stunHandler = stunHandler;
+    _dualShspSocket = dualShspSocket;
+  }
+
   /// Initialize STUN handlers and SHSP sockets
   ///
   /// Creates both IPv4 and IPv6 STUN handlers along with corresponding SHSP sockets.
   /// IPv6 is optional and fails gracefully if unavailable.
+  @override
   Future<void> initialize({
     String? address,
     int? port,
@@ -85,21 +96,25 @@ class StunShspHandler implements IStunShspHandler {
   }
 
   /// Perform STUN request to detect NAT
+  @override
   Future<StunResponse> performStunRequest() async {
     return _stunHandler.performStunRequest();
   }
 
   /// Perform local address detection
+  @override
   Future<LocalInfo> performLocalRequest() async {
     return _stunHandler.performLocalRequest();
   }
 
   /// Ping STUN server
+  @override
   Future<bool> pingStunServer({bool ipv6 = false}) async {
     return _stunHandler.pingStunServer(ipv6: ipv6);
   }
 
   /// Set STUN server
+  @override
   void setStunServer(String address, int port, {bool? ipv6}) {
     _stunHandler.setStunServer(address, port, ipv6: ipv6);
   }
