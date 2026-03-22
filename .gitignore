@@ -1,0 +1,43 @@
+# Dart/Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+*.iml
+*.lock
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Melos
+.melos/
+melos_tool/
+
+# Build
+build/
+dist/
+*.o
+*.a
+
+# Generated files
+*.g.dart
+*.g.java
+*.g.m.dart
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Node (if using any npm packages)
+node_modules/
+package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
