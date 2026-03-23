@@ -3,6 +3,8 @@ import 'package:shsp/shsp.dart';
 
 /// Interface for a handler combining STUN protocol with SHSP Socket
 abstract interface class IStunShspHandler {
+  bool get isInitialized;
+
   Future<void> initialize({
     String? address,
     int? port,

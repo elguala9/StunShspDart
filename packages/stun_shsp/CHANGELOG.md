@@ -11,3 +11,9 @@
 - Graceful IPv6 fallback: IPv6 socket is created when available, skipped silently otherwise
 - Optional compression codec support via `ICompressionCodec` passed to `ShspSocket`
 - Public API: `performStunRequest()`, `performLocalRequest()`, `pingStunServer()`, `setStunServer()`, `close()`
+- `isInitialized` getter on `IStunShspHandler` / `StunShspHandler`
+
+### Fixed
+
+- `initialize()` now throws `StateError` if called after `injectDependencies()`, preventing silent
+  overwrite of DI-injected dependencies

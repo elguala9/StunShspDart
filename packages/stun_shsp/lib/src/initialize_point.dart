@@ -1,3 +1,6 @@
+// StunHandlerBaseDI is not part of the stun package's public API (not exported
+// from package:stun/stun.dart), but we need to reference its concrete type to
+// re-register the DI instance under the abstract StunHandlerBase key.
 // ignore: implementation_imports
 import 'package:stun/src/generated/stun_handler_base_di.dart';
 import 'package:stun_shsp/stun_shsp.dart';
