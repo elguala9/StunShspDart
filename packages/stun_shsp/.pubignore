@@ -1,0 +1,5 @@
+# Code-generation config — not needed by consumers
+index_generator.yaml
+
+# Unit tests live in packages/test, not here
+test/

@@ -6,6 +6,11 @@ export 'stun_shsp_handler.dart';
 ///
 /// Extends [StunShspHandler] with a singleton pattern to ensure only one instance exists.
 ///
+/// **Important**: the singleton is created eagerly but its dependencies are not
+/// set until [initialize] (manual path) or [injectDependencies] (DI path) is
+/// called. Accessing any operation before initialization will throw a
+/// `LateInitializationError`. Use [isInitialized] to guard calls at runtime.
+///
 /// Example:
 /// ```dart
 /// final handler = StunShspHandlerSingleton();
@@ -15,10 +20,7 @@ export 'stun_shsp_handler.dart';
 /// final stunResponse = await handler.performStunRequest();
 ///
 /// // Use SHSP socket for communication
-/// final shspSocket = handler.getShspSocket();
-/// shspSocket.setMessageCallback(peer, (record) {
-///   print('Message from ${record.rinfo}: ${record.msg}');
-/// });
+/// final shspSocket = handler.dualShspSocket;
 /// ```
 class StunShspHandlerSingleton extends StunShspHandler {
   /// Factory constructor - ensures only one instance exists

@@ -36,12 +36,19 @@ class StunShspHandler implements IStunShspHandler {
   @isInjected
   late IDualShspSocketMigratable _dualShspSocket;
 
+  bool _initialized = false;
+
+  /// Whether [initialize] or [injectDependencies] has already been called.
+  @override
+  bool get isInitialized => _initialized;
+
   /// Injection point used by the generated DI class.
   /// Not for direct use — call [initialize] or use the DI system instead.
   void injectDependencies({
     required StunHandlerBase stunHandler,
     required IDualShspSocketMigratable dualShspSocket,
   }) {
+    _initialized = true;
     _stunHandler = stunHandler;
     _dualShspSocket = dualShspSocket;
   }
@@ -50,6 +57,8 @@ class StunShspHandler implements IStunShspHandler {
   ///
   /// Creates both IPv4 and IPv6 STUN handlers along with corresponding SHSP sockets.
   /// IPv6 is optional and fails gracefully if unavailable.
+  ///
+  /// Throws [StateError] if already initialized (either via this method or [injectDependencies]).
   @override
   Future<void> initialize({
     String? address,
@@ -57,6 +66,13 @@ class StunShspHandler implements IStunShspHandler {
     Duration timeout = const Duration(seconds: 5),
     ICompressionCodec? compressionCodec,
   }) async {
+    if (_initialized) {
+      throw StateError(
+        'StunShspHandler is already initialized. '
+        'Do not mix initialize() with injectDependencies().',
+      );
+    }
+    _initialized = true;
     // Initialize STUN handlers
     await _stunHandler.initialize(
       address: address,
