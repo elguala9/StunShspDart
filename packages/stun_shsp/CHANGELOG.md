@@ -1,3 +1,12 @@
+## 0.1.2
+
+### Changed
+
+- Bumped `stun` to `^1.4.2`
+- Bumped `shsp` to `^1.6.1`
+- Bumped `singleton_manager` to `^0.6.1`
+- Removed deprecated lint rules (`avoid_returning_null_for_future`, `invariant_booleans`, `iterable_contains_unrelated_type`, `list_remove_unrelated_type`) from `analysis_options.yaml`
+
 ## 0.1.0
 
 ### Added

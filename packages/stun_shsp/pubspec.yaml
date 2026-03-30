@@ -3,7 +3,7 @@ description: >-
   Combines STUN (RFC 5389) and SHSP protocols into a unified handler for NAT
   traversal and peer-to-peer UDP communication. Supports dual IPv4/IPv6 stacks,
   runtime socket migration, optional compression, and dependency injection.
-version: 0.1.0
+version: 0.1.2
 repository: https://github.com/elguala9/StunShspDart
 
 topics:
@@ -19,9 +19,9 @@ environment:
 resolution: workspace
 
 dependencies:
-  stun: ^1.4.0
-  singleton_manager: ^0.4.0
-  shsp: ^1.5.0
+  stun: ^1.4.2
+  shsp: ^1.6.1
+  singleton_manager: ^0.6.1
 
 dev_dependencies:
   lints: ^3.0.0
