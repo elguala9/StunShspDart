@@ -10,7 +10,6 @@ resolution: workspace
 dependencies:
   stun_shsp:
     path: ../stun_shsp
-  singleton_manager: ^0.4.0
 
 dev_dependencies:
   test: ^1.24.0

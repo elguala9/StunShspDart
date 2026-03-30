@@ -18,7 +18,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  stun_shsp: ^0.1.0
+  stun_shsp: ^0.1.2
 ```
 
 Then run:
