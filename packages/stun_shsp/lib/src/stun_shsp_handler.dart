@@ -25,7 +25,7 @@ export 'i_stun_shsp_handler.dart';
 /// final shspSocket = handler.dualShspSocket;
 /// ```
 @isSingleton
-class StunShspHandler implements IStunShspHandler {
+class StunShspHandler with ValueForRegistry implements IStunShspHandler {
   StunShspHandler();
 
   /// Underlying STUN handler singleton
@@ -157,6 +157,9 @@ class StunShspHandler implements IStunShspHandler {
     _stunHandler.close(ipv6: ipv6);
     _dualShspSocket.close();
   }
+
+  @override
+  void destroy() => close();
 
   @override
   void migrateSocketIpv4(IShspSocket socket) {
