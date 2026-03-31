@@ -1,3 +1,9 @@
+## 0.1.3
+
+### Changed
+
+- Prepared for pub.dev publication
+
 ## 0.1.2
 
 ### Changed
