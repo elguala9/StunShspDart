@@ -18,7 +18,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  stun_shsp: ^0.1.2
+  stun_shsp: ^0.1.4
 ```
 
 Then run:
@@ -26,6 +26,14 @@ Then run:
 ```sh
 dart pub get
 ```
+
+## What's New in 0.1.4
+
+**Bug Fix:** Fixed `LateInitializationError` when using `StunShspHandler.initialize()` directly (manual initialization path).
+
+The bug occurred because the `initialize()` method was attempting to access `_stunHandler` before creating an instance. This has been resolved — both the DI path and manual initialization path now work correctly.
+
+See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Usage
 

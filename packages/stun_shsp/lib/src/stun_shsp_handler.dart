@@ -73,6 +73,10 @@ class StunShspHandler with ValueForRegistry implements IStunShspHandler {
       );
     }
     _initialized = true;
+
+    // Create STUN handler singleton (must be done before using it)
+    _stunHandler = StunHandlerSingleton();
+
     // Initialize STUN handlers
     await _stunHandler.initialize(
       address: address,

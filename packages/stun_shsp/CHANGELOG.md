@@ -1,3 +1,9 @@
+## 0.1.4
+
+### Fixed
+
+- Fixed `LateInitializationError` in `StunShspHandler.initialize()`: now correctly creates `StunHandlerSingleton` instance before attempting initialization. The manual initialization path (non-DI) was attempting to access `_stunHandler` before assignment, violating Dart's late variable contract.
+
 ## 0.1.3
 
 ### Changed
