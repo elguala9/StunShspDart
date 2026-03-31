@@ -1,8 +1,9 @@
+import 'package:singleton_manager/singleton_manager.dart';
 import 'package:stun/stun.dart';
 import 'package:shsp/shsp.dart';
 
 /// Interface for a handler combining STUN protocol with SHSP Socket
-abstract interface class IStunShspHandler {
+abstract interface class IStunShspHandler implements IValueForRegistry {
   bool get isInitialized;
 
   Future<void> initialize({
