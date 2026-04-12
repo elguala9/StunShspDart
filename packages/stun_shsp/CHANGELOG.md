@@ -1,3 +1,25 @@
+## 0.2.0
+
+### Changed
+
+- **Major refactor**: STUN requests now run **on the same SHSP socket** instead of separate raw sockets. This guarantees that the public port discovered by STUN matches exactly the port that P2P peers must use to reach this node — eliminating port mismatch bugs.
+- Bumped `stun` to `^1.5.1`
+- Bumped `shsp` to `^1.7.1`
+- Updated SDK constraint to `>=3.5.0 <4.0.0`
+
+### Added
+
+- Comprehensive test suite in `stun_shsp_handler_port_test.dart` covering:
+  - STUN/SHSP port matching (core regression test)
+  - IPv4 and IPv6 socket sanity checks
+  - Explicit port binding and OS-assigned ports
+  - Double-initialize guard
+  - Dual socket structure validation
+  
+### Fixed
+
+- STUN discoveries now reflect the exact SHSP socket port used for P2P communication
+
 ## 0.1.4
 
 ### Fixed
