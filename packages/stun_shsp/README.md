@@ -18,7 +18,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  stun_shsp: ^0.1.4
+  stun_shsp: ^0.2.0
 ```
 
 Then run:
@@ -27,11 +27,17 @@ Then run:
 dart pub get
 ```
 
-## What's New in 0.1.4
+## What's New in 0.2.0
 
-**Bug Fix:** Fixed `LateInitializationError` when using `StunShspHandler.initialize()` directly (manual initialization path).
+**Major Refactor: STUN runs on the SHSP socket**
 
-The bug occurred because the `initialize()` method was attempting to access `_stunHandler` before creating an instance. This has been resolved — both the DI path and manual initialization path now work correctly.
+Previously, STUN requests were sent from a separate raw socket, which could result in the discovered public port **not matching** the port that P2P peers use to reach this node. This is now fixed:
+
+- STUN Binding Requests are now sent **from the same SHSP socket** used for P2P data communication
+- The public port returned by `performStunRequest()` is **guaranteed to match** the port peers must connect to
+- Added comprehensive test suite (`stun_shsp_handler_port_test.dart`) to catch port-mismatch regressions
+- Updated dependencies: `stun: ^1.5.1`, `shsp: ^1.7.1`
+- Requires Dart `>=3.5.0`
 
 See [CHANGELOG.md](CHANGELOG.md) for details.
 
