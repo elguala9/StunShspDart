@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:singleton_manager/singleton_manager.dart';
 import 'package:stun_shsp/stun_shsp.dart';
 import 'package:test/test.dart';
 
