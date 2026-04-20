@@ -36,7 +36,7 @@ Previously, STUN requests were sent from a separate raw socket, which could resu
 - STUN Binding Requests are now sent **from the same SHSP socket** used for P2P data communication
 - The public port returned by `performStunRequest()` is **guaranteed to match** the port peers must connect to
 - Added comprehensive test suite (`stun_shsp_handler_port_test.dart`) to catch port-mismatch regressions
-- Updated dependencies: `stun: ^1.5.1`, `shsp: ^1.7.1`
+- Updated dependencies: `stun: ^1.5.1`, `shsp: ^1.8.0`
 - Requires Dart `>=3.5.0`
 
 See [CHANGELOG.md](CHANGELOG.md) for details.

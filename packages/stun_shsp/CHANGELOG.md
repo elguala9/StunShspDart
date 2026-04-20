@@ -4,7 +4,7 @@
 
 - **Major refactor**: STUN requests now run **on the same SHSP socket** instead of separate raw sockets. This guarantees that the public port discovered by STUN matches exactly the port that P2P peers must use to reach this node — eliminating port mismatch bugs.
 - Bumped `stun` to `^1.5.1`
-- Bumped `shsp` to `^1.7.1`
+- Bumped `shsp` to `^1.8.0`
 - Updated SDK constraint to `>=3.5.0 <4.0.0`
 
 ### Added

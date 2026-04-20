@@ -20,7 +20,7 @@ resolution: workspace
 
 dependencies:
   stun: ^1.5.1
-  shsp: ^1.7.1
+  shsp: ^1.8.0
   singleton_manager: ^0.6.1
 
 dev_dependencies:
