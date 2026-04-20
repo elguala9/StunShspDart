@@ -1,3 +1,9 @@
+## 0.2.1
+
+### Changed
+
+- Bumped `shsp` to `^1.8.0`
+
 ## 0.2.0
 
 ### Changed
