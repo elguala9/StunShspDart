@@ -7,7 +7,6 @@ environment:
 
 workspace:
   - packages/stun_shsp
-  - packages/test
 
 dev_dependencies:
   melos: ^7.4.1

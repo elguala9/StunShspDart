@@ -18,7 +18,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  stun_shsp: ^0.2.1
+  stun_shsp: ^0.2.2
 ```
 
 Then run:
@@ -26,6 +26,14 @@ Then run:
 ```sh
 dart pub get
 ```
+
+## What's New in 0.2.2
+
+**Fix: `IShspSocket` now registered in DI container**
+
+`initializePointStunShsp()` was not registering the IPv4 `IShspSocket` as an autonomous DI type. Consumers calling `SingletonDIAccess.get<IShspSocket>()` would get a `StateError`. Fixed in 0.2.2.
+
+Also includes consolidated test suites (unit + integration) with identity-verification tests for the full DI object graph.
 
 ## What's New in 0.2.0
 
@@ -133,7 +141,7 @@ Bootstraps the full dependency graph:
 2. Initializes STUN handlers bound to those sockets
 3. Creates and registers `StunShspHandlerDI` in the DI container
 
-After this call you can resolve `IStunShspHandler` from `SingletonDIAccess`.
+After this call you can resolve `IStunShspHandler`, `IShspSocket`, `StunHandlerBase`, `IDualShspSocketMigratable`, `IDualStunHandler`, `IDualCallbackHandler`, and more from `SingletonDIAccess`.
 
 ---
 
