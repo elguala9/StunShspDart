@@ -1,3 +1,14 @@
+## 0.2.2
+
+### Fixed
+
+- `initializePointStunShsp()` now registers `IShspSocket` as an autonomous type in the DI container (`initialize_point.dart:14`). Previously, consumers resolving `SingletonDIAccess.get<IShspSocket>()` would fail because only `DualShspSocketWrapperDI.ipv4Socket` was accessible through the wrapper.
+
+### Added
+
+- Comprehensive test coverage for all 8 public DI registrations after `initializePointStunShsp()`, including identity checks across the object graph (`IShspSocket`, `IDualStunHandler`, `IDualCallbackHandler`, `DualShspSocketWrapperDI`, `StunHandlerBaseDI`, etc.)
+- Consolidated integration test suite (socket migration, STUN requests) into the `stun_shsp` package.
+
 ## 0.2.1
 
 ### Changed

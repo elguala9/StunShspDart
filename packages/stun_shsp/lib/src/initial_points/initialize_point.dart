@@ -11,6 +11,8 @@ Future<void> initializePointStunShsp() async {
   final dualShspSocketWrapper = SingletonDIAccess.get<DualShspSocketWrapperDI>();
   await initialPointStunWithSockets(dualShspSocketWrapper.ipv4Socket, ipv6Socket: dualShspSocketWrapper.ipv6Socket);
 
+  SingletonDIAccess.addInstance<IShspSocket>(dualShspSocketWrapper.ipv4Socket);
+
   // initialPointStunWithSockets registers StunHandlerBaseDI (concrete type) as the key.
   // Re-register the same instance under StunHandlerBase so DI injection works correctly.
   final stunBase = SingletonDIAccess.get<StunHandlerBaseDI>();

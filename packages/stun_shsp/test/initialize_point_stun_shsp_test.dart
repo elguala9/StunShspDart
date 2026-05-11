@@ -1,3 +1,7 @@
+// StunHandlerBaseDI is not part of the stun package's public API, but we need it
+// to verify DI registration consistency.
+// ignore: implementation_imports
+import 'package:stun/src/generated/stun_handler_base_di.dart';
 import 'package:stun_shsp/stun_shsp.dart';
 import 'package:test/test.dart';
 
@@ -130,14 +134,138 @@ void main() {
       expect(handler1, same(handler2));
     });
 
-    test('all registered objects are accessible without throwing', () async {
+    test('IShspSocket is registered in DI', () async {
+      await initializePointStunShsp();
+
+      expect(
+        () => SingletonDIAccess.get<IShspSocket>(),
+        returnsNormally,
+      );
+    });
+
+    test('IShspSocket is not closed', () async {
+      await initializePointStunShsp();
+
+      final socket = SingletonDIAccess.get<IShspSocket>();
+      expect(socket.isClosed, isFalse);
+    });
+
+    test('IShspSocket has a valid local port', () async {
+      await initializePointStunShsp();
+
+      final socket = SingletonDIAccess.get<IShspSocket>();
+      expect(socket.localPort, greaterThan(0));
+    });
+
+    test('IShspSocket is the same instance as handler.ipv4ShspSocket', () async {
+      await initializePointStunShsp();
+
+      final socket = SingletonDIAccess.get<IShspSocket>();
+      final handler = SingletonDIAccess.get<IStunShspHandler>();
+      expect(socket, same(handler.ipv4ShspSocket));
+    });
+
+    test('IShspSocket is the same instance as dualShspSocketWrapper.ipv4Socket', () async {
+      await initializePointStunShsp();
+
+      final socket = SingletonDIAccess.get<IShspSocket>();
+      final wrapper = SingletonDIAccess.get<DualShspSocketWrapperDI>();
+      expect(socket, same(wrapper.ipv4Socket));
+    });
+
+    test('IShspSocket is the same as DualShspSocketMigratable.ipv4Socket', () async {
+      await initializePointStunShsp();
+
+      final socket = SingletonDIAccess.get<IShspSocket>();
+      final dualSocket = SingletonDIAccess.get<IDualShspSocketMigratable>();
+      expect(socket, same(dualSocket.ipv4Socket));
+    });
+
+    test('IDualStunHandler is registered in DI', () async {
+      await initializePointStunShsp();
+
+      expect(
+        () => SingletonDIAccess.get<IDualStunHandler>(),
+        returnsNormally,
+      );
+    });
+
+    test('IDualCallbackHandler is registered in DI', () async {
+      await initializePointStunShsp();
+
+      expect(
+        () => SingletonDIAccess.get<IDualCallbackHandler>(),
+        returnsNormally,
+      );
+    });
+
+    test('DualShspSocketWrapperDI is registered in DI', () async {
+      await initializePointStunShsp();
+
+      expect(
+        () => SingletonDIAccess.get<DualShspSocketWrapperDI>(),
+        returnsNormally,
+      );
+    });
+
+    test('StunHandlerBaseDI is registered in DI', () async {
+      await initializePointStunShsp();
+
+      expect(
+        () => SingletonDIAccess.get<StunHandlerBaseDI>(),
+        returnsNormally,
+      );
+    });
+
+    test('StunHandlerBaseDI is the same instance as StunHandlerBase', () async {
+      await initializePointStunShsp();
+
+      final base = SingletonDIAccess.get<StunHandlerBase>();
+      final baseDi = SingletonDIAccess.get<StunHandlerBaseDI>();
+      expect(base, same(baseDi));
+    });
+
+    test('IDualStunHandler is the same as stunHandler.dualHandler', () async {
+      await initializePointStunShsp();
+
+      final dualStun = SingletonDIAccess.get<IDualStunHandler>();
+      final handler = SingletonDIAccess.get<IStunShspHandler>();
+      expect(handler.stunHandler.dualHandler, same(dualStun));
+    });
+
+    test('all public DI registrations are accessible without throwing', () async {
       await initializePointStunShsp();
 
       expect(() {
         SingletonDIAccess.get<IStunShspHandler>();
         SingletonDIAccess.get<StunHandlerBase>();
+        SingletonDIAccess.get<StunHandlerBaseDI>();
+        SingletonDIAccess.get<IShspSocket>();
         SingletonDIAccess.get<IDualShspSocketMigratable>();
+        SingletonDIAccess.get<DualShspSocketWrapperDI>();
+        SingletonDIAccess.get<IDualStunHandler>();
+        SingletonDIAccess.get<IDualCallbackHandler>();
       }, returnsNormally);
+    });
+
+    test('all DI registrations point to the same consistent object graph', () async {
+      await initializePointStunShsp();
+
+      final handler = SingletonDIAccess.get<IStunShspHandler>();
+      final socket = SingletonDIAccess.get<IShspSocket>();
+      final stunBase = SingletonDIAccess.get<StunHandlerBase>();
+      final stunBaseDi = SingletonDIAccess.get<StunHandlerBaseDI>();
+      final dualSocket = SingletonDIAccess.get<IDualShspSocketMigratable>();
+      final wrapper = SingletonDIAccess.get<DualShspSocketWrapperDI>();
+      final dualStun = SingletonDIAccess.get<IDualStunHandler>();
+
+      expect(socket, same(handler.ipv4ShspSocket));
+      expect(socket, same(wrapper.ipv4Socket));
+      expect(socket, same(dualSocket.ipv4Socket));
+      expect(stunBase, same(stunBaseDi));
+      expect(stunBase, same(handler.stunHandler));
+      expect(dualSocket, same(handler.dualShspSocket));
+      expect(dualStun, same(handler.stunHandler.dualHandler));
     });
 
     test('handler can call performLocalRequest', () async {
