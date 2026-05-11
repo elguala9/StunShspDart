@@ -122,12 +122,30 @@ void main() {
       expect(handler.stunHandler, isA<StunHandlerBase>());
     });
 
+    test('IDualShspSocketWrapper is registered in registry', () async {
+      await initializePointRegistryStunShsp(testKey);
+
+      expect(
+        () => RegistryAccess.getInstance<IDualShspSocketWrapper>(testKey),
+        returnsNormally,
+      );
+    });
+
+    test('IDualShspSocketWrapper.ipv4Socket matches handler.ipv4ShspSocket', () async {
+      await initializePointRegistryStunShsp(testKey);
+
+      final wrapper = RegistryAccess.getInstance<IDualShspSocketWrapper>(testKey);
+      final handler = RegistryAccess.getInstance<IStunShspHandler>(testKey);
+      expect(wrapper.ipv4Socket, same(handler.ipv4ShspSocket));
+    });
+
     test('all registered objects are accessible without throwing', () async {
       await initializePointRegistryStunShsp(testKey);
 
       expect(() {
         RegistryAccess.getInstance<IStunShspHandler>(testKey);
         RegistryAccess.getInstance<IDualShspSocketMigratable>(testKey);
+        RegistryAccess.getInstance<IDualShspSocketWrapper>(testKey);
       }, returnsNormally);
     });
 
