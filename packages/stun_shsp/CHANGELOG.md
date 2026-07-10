@@ -1,3 +1,15 @@
+## 0.3.0
+
+### Added
+
+- `performStunRequest({bool ipv6 = true})` now supports per-IP-family discovery. IPv6 is targeted by default, with graceful fallback to IPv4 when no IPv6 socket is available. Pass `ipv6: false` to force IPv4.
+- STUN responses are now cached independently per IP family (`_cachedIpv4StunResponse`, `_cachedIpv6StunResponse`).
+- IPv6 STUN test suite (`stun_shsp_handler_ipv6_test.dart`); IPv6-only cases skip automatically when the host has no IPv6 connectivity.
+
+### Changed
+
+- `setStunServer()` now invalidates both the IPv4 and IPv6 cached responses so the next request uses the new server.
+
 ## 0.2.2
 
 ### Fixed

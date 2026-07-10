@@ -13,7 +13,7 @@ abstract interface class IStunShspHandler implements IValueForRegistry {
     ICompressionCodec? compressionCodec,
   });
 
-  Future<StunResponse> performStunRequest();
+  Future<StunResponse> performStunRequest({bool ipv6 = true});
 
   Future<LocalInfo> performLocalRequest();
 

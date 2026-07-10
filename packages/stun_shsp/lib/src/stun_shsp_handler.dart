@@ -57,6 +57,7 @@ class StunShspHandler with ValueForRegistry implements IStunShspHandler {
 
   // Per-socket cached responses (set after the first successful request)
   StunResponse? _cachedIpv4StunResponse;
+  StunResponse? _cachedIpv6StunResponse;
 
   /// Whether [initialize] or [injectDependencies] has already been called.
   @override
@@ -168,13 +169,21 @@ class StunShspHandler with ValueForRegistry implements IStunShspHandler {
   /// Perform STUN request to discover the public NAT mapping for the SHSP socket.
   ///
   /// The request is sent **from the SHSP socket** so the discovered public port
-  /// matches the port that peers must connect to. Results are cached; subsequent
-  /// calls return the cached value instantly.
+  /// matches the port that peers must connect to. Results are cached per IP
+  /// family; subsequent calls return the cached value instantly.
+  ///
+  /// Discovery targets IPv6 by default. When no IPv6 socket is available
+  /// (IPv6 bind failed during [initialize]), it falls back gracefully to IPv4.
+  /// Pass `ipv6: false` to force IPv4.
   @override
-  Future<StunResponse> performStunRequest() async {
-    _cachedIpv4StunResponse ??=
+  Future<StunResponse> performStunRequest({bool ipv6 = true}) async {
+    final ipv6Socket = _dualShspSocket.ipv6Socket;
+    if (ipv6 && ipv6Socket != null) {
+      return _cachedIpv6StunResponse ??=
+          await _performStunViaShsp(ipv6Socket, ipv6: true);
+    }
+    return _cachedIpv4StunResponse ??=
         await _performStunViaShsp(_dualShspSocket.ipv4Socket, ipv6: false);
-    return _cachedIpv4StunResponse!;
   }
 
   /// Perform local address detection using the SHSP socket's actual local port.
@@ -211,6 +220,7 @@ class StunShspHandler with ValueForRegistry implements IStunShspHandler {
     _stunHandler.setStunServer(address, port, ipv6: ipv6);
     // Invalidate cached responses so the next request uses the new server.
     _cachedIpv4StunResponse = null;
+    _cachedIpv6StunResponse = null;
   }
 
   // ── Socket accessors ───────────────────────────────────────────────────────

@@ -17,7 +17,19 @@ melos:
   scripts:
     test:
       description: Run tests for all packages
-      exec: dart test
+      exec: dart test --color
+      packageFilters:
+        dirExists: test
+
+    test:ipv6:
+      description: Run only the IPv6 STUN tests (needs network; IPv6-only cases skip without IPv6)
+      exec: dart test --color test/stun_shsp_handler_ipv6_test.dart
+      packageFilters:
+        scope: stun_shsp
+
+    test:all:
+      description: Run the full test suite across every package
+      exec: dart test --color
       packageFilters:
         dirExists: test
 
