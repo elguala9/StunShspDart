@@ -19,8 +19,8 @@ environment:
 resolution: workspace
 
 dependencies:
-  stun: ^1.5.1
-  shsp: ^1.8.0
+  stun: ^1.6.1
+  shsp: ^1.10.1
   singleton_manager: ^0.6.1
 
 dev_dependencies:

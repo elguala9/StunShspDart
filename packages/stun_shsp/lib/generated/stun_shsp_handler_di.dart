@@ -6,10 +6,10 @@ import '../src/stun_shsp_handler.dart';
 import 'dart:io';
 import 'package:stun/stun.dart';
 import 'package:shsp/shsp.dart';
-import '../src/i_stun_shsp_handler.dart';
+import '../src/interfaces/i_stun_shsp_handler.dart';
 
-class StunShspHandlerDI extends StunShspHandler implements ISingletonStandardDI {
-  StunShspHandlerDI._() : super();
+class StunShspHandlerDI implements ISingletonStandardDI {
+  StunShspHandlerDI._();
 
   factory StunShspHandlerDI.initializeDI() {
     final instance = StunShspHandlerDI._();
@@ -18,10 +18,5 @@ class StunShspHandlerDI extends StunShspHandler implements ISingletonStandardDI 
   }
 
   @override
-  void initializeDI() {
-    injectDependencies(
-      stunHandler: SingletonDIAccess.get<StunHandlerBase>(),
-      dualShspSocket: SingletonDIAccess.get<IDualShspSocketMigratable>(),
-    );
-  }
+  void initializeDI() {}
 }

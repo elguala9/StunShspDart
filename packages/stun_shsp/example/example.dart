@@ -1,61 +1,113 @@
 // ignore_for_file: avoid_print
-import 'dart:io';
-
-import 'package:stun_shsp/stun_shsp.dart';
-
-/// Example: DI-based initialization (recommended for apps)
-Future<void> diExample() async {
-  // Bootstrap SHSP sockets, STUN handlers and DI wiring in one call.
-  await initializePointStunShsp();
-
-  final handler = SingletonDIAccess.get<IStunShspHandler>();
-
-  // Discover the public IP and port via STUN.
-  final stun = await handler.performStunRequest();
-  print('Public address : ${stun.publicIp}:${stun.publicPort}');
-  print('IP version     : ${stun.ipVersion}');
-
-  // Retrieve local address information.
-  final local = await handler.performLocalRequest();
-  print('Local address  : ${local.localIp}:${local.localPort}');
-
-  // The dual socket routes packets automatically between IPv4 and IPv6.
-  final dual = handler.dualShspSocket;
-  print('IPv4 local port: ${dual.ipv4Socket.localPort}');
-  if (dual.ipv6Socket != null) {
-    print('IPv6 local port: ${dual.ipv6Socket!.localPort}');
-  }
-
-  handler.close();
-  SingletonManager.instance.destroyAll();
-}
-
-/// Example: manual instantiation (no DI)
-Future<void> manualExample() async {
-  final handler = StunShspHandlerSingleton();
-
-  await handler.initialize(
-    address: '0.0.0.0',
-    port: 0, // 0 = OS-assigned ephemeral port
-    timeout: const Duration(seconds: 5),
-    // compressionCodec: MyCodec(), // optional
-  );
-
-  final stun = await handler.performStunRequest();
-  print('Public address: ${stun.publicIp}:${stun.publicPort}');
-
-  // Migrate to a new socket at runtime (e.g. after a network change).
-  final newSocket = await ShspSocket.bind(InternetAddress.anyIPv4, 0);
-  handler.migrateSocketIpv4(newSocket);
-  print('Migrated IPv4 port: ${handler.ipv4ShspSocket.localPort}');
-
-  handler.close();
-}
+import 'stun_shsp_handler_example.dart';
+import 'dual_stun_shsp_handler_example.dart';
+import 'nat_detector_shsp_example.dart';
 
 Future<void> main() async {
-  print('=== DI example ===');
-  await diExample();
+  // --- StunShspHandler constructors ---
+  print('--- StunShspHandler constructors ---\n');
+  await stunShspHandlerConstructorExample();
+  await stunShspHandlerCreateDefaultIpv4Example();
+  await stunShspHandlerCreateDefaultIpv6Example();
+  await stunShspHandlerCreateDefaultPortExample();
+  await stunShspHandlerCreateDefaultCodecExample();
 
-  print('\n=== Manual example ===');
-  await manualExample();
+  // --- StunShspHandler own getters ---
+  print('\n--- StunShspHandler own getters ---\n');
+  await stunShspHandlerStunHandlerGetterExample();
+  await stunShspHandlerShspSocketGetterExample();
+  await stunShspHandlerDelegateSocketGetterExample();
+  await stunShspHandlerDelegateStunHandlerGetterExample();
+
+  // --- StunShspHandler own methods ---
+  print('\n--- StunShspHandler own methods ---\n');
+  await stunShspHandlerMigrateSocketExample();
+  await stunShspHandlerCloseExample();
+  await stunShspHandlerDestroyExample();
+
+  // --- StunShspHandler IStunHandlerDelegationMixin ---
+  print('\n--- StunShspHandler IStunHandlerDelegationMixin ---\n');
+  await stunShspHandlerPerformStunRequestExample();
+  await stunShspHandlerPerformLocalRequestExample();
+  await stunShspHandlerPingStunServerExample();
+  await stunShspHandlerSetStunServerExample();
+  await stunShspHandlerGetSocketExample();
+  await stunShspHandlerLastStunUpdatedExample();
+  await stunShspHandlerLastLocalUpdatedExample();
+  await stunShspHandlerSocketRefreshCallbackExample();
+
+  // --- StunShspHandler ShspSocketWrapperDelegationMixin ---
+  print('\n--- StunShspHandler ShspSocketWrapperDelegationMixin ---\n');
+  await stunShspHandlerPortExample();
+  await stunShspHandlerAddressExample();
+  await stunShspHandlerBroadcastEnabledExample();
+  await stunShspHandlerReadEventsEnabledExample();
+  await stunShspHandlerWriteEventsEnabledExample();
+  await stunShspHandlerLocalAddressExample();
+  await stunShspHandlerLocalPortExample();
+  await stunShspHandlerCompressionCodecExample();
+  await stunShspHandlerIsClosedExample();
+  await stunShspHandlerExtractProfileExample();
+  await stunShspHandlerApplyProfileExample();
+  await stunShspHandlerRawSocketExample();
+  await stunShspHandlerSerializedObjectExample();
+
+  // --- DualStunShspHandler constructors ---
+  print('\n--- DualStunShspHandler constructors ---\n');
+  await dualStunShspHandlerConstructorExample();
+  await dualStunShspHandlerCreateDefaultExample();
+  await dualStunShspHandlerCreateDefaultPortsExample();
+  await dualStunShspHandlerCreateDefaultCodecExample();
+
+  // --- DualStunShspHandler own getters ---
+  print('\n--- DualStunShspHandler own getters ---\n');
+  await dualStunShspHandlerStunShspGettersExample();
+  await dualStunShspHandlerShspSocketGettersExample();
+  await dualStunShspHandlerDelegateDualSocketExample();
+  await dualStunShspHandlerDelegateDualStunHandlerExample();
+
+  // --- DualStunShspHandler own methods ---
+  print('\n--- DualStunShspHandler own methods ---\n');
+  await dualStunShspHandlerRefreshSocketIpv4Example();
+  await dualStunShspHandlerRefreshSocketIpv6Example();
+  await dualStunShspHandlerRefreshSocketsExample();
+  await dualStunShspHandlerMigrateSocketIpv4Example();
+  await dualStunShspHandlerMigrateSocketIpv6Example();
+  await dualStunShspHandlerDestroyExample();
+
+  // --- DualStunShspHandler IDualStunHandlerDelegationMixin ---
+  print('\n--- DualStunShspHandler IDualStunHandlerDelegationMixin ---\n');
+  await dualStunShspHandlerIpHandlersExample();
+  await dualStunShspHandlerSetIpHandlerExample();
+  await dualStunShspHandlerClearHandlerExample();
+  await dualStunShspHandlerReplaceHandlerExample();
+  await dualStunShspHandlerPerformStunRequestExample();
+  await dualStunShspHandlerPerformLocalRequestExample();
+  await dualStunShspHandlerPingStunServerExample();
+  await dualStunShspHandlerGetSocketExample();
+  await dualStunShspHandlerSetStunServerExample();
+  await dualStunShspHandlerSetStunServerPerProtocolExample();
+  await dualStunShspHandlerCloseExample();
+  await dualStunShspHandlerLastStunTimestampsExample();
+  await dualStunShspHandlerLastLocalTimestampsExample();
+  await dualStunShspHandlerLastStunUpdatedExample();
+  await dualStunShspHandlerLastLocalUpdatedExample();
+  await dualStunShspHandlerInitializeDIExample();
+
+  // --- DualStunShspHandler DualShspSocketWrapperDelegationMixin ---
+  print('\n--- DualStunShspHandler DualShspSocketWrapperDelegationMixin ---\n');
+  await dualStunShspHandlerRawSocketsExample();
+  await dualStunShspHandlerSocketWrappersExample();
+  await dualStunShspHandlerSocketImplExample();
+  await dualStunShspHandlerExtractProfileExample();
+  await dualStunShspHandlerApplyProfileExample();
+  await dualStunShspHandlerDualSocketStateExample();
+  await dualStunShspHandlerRawSocketExample();
+  await dualStunShspHandlerSerializedObjectExample();
+  await dualStunShspHandlerCallbacksExample();
+
+  // --- NATDetectorShsp ---
+  print('\n--- NATDetectorShsp ---\n');
+  await natDetectorShspConstructorExample();
+  await natDetectorShspNatShspCompatibilityExample();
 }
