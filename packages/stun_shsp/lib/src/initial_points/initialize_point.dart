@@ -5,19 +5,23 @@
 import 'package:stun/src/generated/stun_handler_base_di.dart';
 import 'package:stun_shsp/stun_shsp.dart';
 
-
 Future<void> initializePointStunShsp() async {
   await initializePointDualShsp();
   final dualShspSocketWrapper = SingletonDIAccess.get<DualShspSocketWrapperDI>();
-  await initialPointStunWithSockets(dualShspSocketWrapper.ipv4Socket, ipv6Socket: dualShspSocketWrapper.ipv6Socket);
 
-  SingletonDIAccess.addInstance<IShspSocket>(dualShspSocketWrapper.ipv4Socket);
+  await initialPointStun();
 
-  // initialPointStunWithSockets registers StunHandlerBaseDI (concrete type) as the key.
-  // Re-register the same instance under StunHandlerBase so DI injection works correctly.
+  final ipv4 = dualShspSocketWrapper.ipv4Socket;
+  if (ipv4 != null) {
+    SingletonDIAccess.addInstance<IShspSocket>(ipv4);
+  }
+
   final stunBase = SingletonDIAccess.get<StunHandlerBaseDI>();
   SingletonDIAccess.addInstanceAs<StunHandlerBase, StunHandlerBaseDI>(stunBase);
 
-  final handler = StunShspHandlerDI.initializeDI();
-  SingletonDIAccess.addInstanceAs<IStunShspHandler, StunShspHandler>(handler);
+  if (ipv4 != null) {
+    final wrapper = ipv4 is IShspSocketWrapper ? ipv4 : ShspSocketWrapper(ipv4);
+    final handler = StunShspHandler(wrapper);
+    SingletonDIAccess.addInstanceAs<IStunShspHandler, StunShspHandler>(handler);
+  }
 }
