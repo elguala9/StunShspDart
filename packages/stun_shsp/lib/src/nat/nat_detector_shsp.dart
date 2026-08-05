@@ -17,9 +17,9 @@ typedef NatShspCompatibilityResult = ({
 });
 
 class NATDetectorShsp extends NATDetector {
-  /// [primaryServer], [primaryPort] and [timeout] fall back to the
-  /// `nat` section of the `stun_shsp` configuration sector; see
-  /// [StunShspConfigExtension].
+  /// [primaryServer], [primaryPort] and [timeout] fall back to the `nat`
+  /// section of the `stun` configuration sector, which owns it — the same
+  /// values `NATDetector` itself defaults to; see [StunShspConfigExtension].
   NATDetectorShsp({
     required super.socket,
     String? primaryServer,

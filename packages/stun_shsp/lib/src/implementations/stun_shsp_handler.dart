@@ -60,8 +60,9 @@ class StunShspHandler
 
   /// Binds a socket of its own and wraps it.
   ///
-  /// Unset arguments fall back to the `socket` section of the `stun_shsp`
-  /// configuration sector; see [StunShspConfigExtension].
+  /// Unset arguments fall back to the configuration: [port] to the `socket`
+  /// section of the `stun_shsp` sector, [ipv6] and the STUN arguments to the
+  /// `stun` sector, which owns them; see [StunShspConfigExtension].
   static Future<StunShspHandler> createDefault({
     bool? ipv6,
     int? port,

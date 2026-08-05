@@ -16,7 +16,7 @@ Future<void> natDetectorShspConstructorExample() async {
 }
 
 /// Only the socket is required — the server and the timeout come from the
-/// `nat` section of the `stun_shsp` configuration sector.
+/// `nat` section of the `stun` configuration sector, which owns it.
 Future<void> natDetectorShspFromConfigExample() async {
   final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
   final detector = NATDetectorShsp(socket: socket);
