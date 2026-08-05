@@ -3,9 +3,21 @@ import 'dart:io';
 import 'package:stun_shsp/stun_shsp.dart';
 import 'package:test/test.dart';
 
+/// The subkeys the graph can actually be resolved under on this host:
+/// `connectDualShspSockets` leaves `ipv6` unregistered where IPv6 is missing,
+/// so asserting it unconditionally would fail for the host, not for the code.
+late final List<String> _availableSubkeys;
+
 /// Every type [MainInjectionStunShspPersonalized] is expected to make
 /// resolvable, paired with the subkey it lives under.
 void main() {
+  setUpAll(() async {
+    _availableSubkeys = [
+      'ipv4',
+      if (await AddressUtility.canCreateIPv6Socket()) 'ipv6',
+    ];
+  });
+
   group('MainInjectionStunShspPersonalized', () {
     test('resolves the SHSP half of the graph', () async {
       const key = 'personalized_shsp';
@@ -14,18 +26,13 @@ void main() {
 
       final registry = RegistryManager.instance;
 
-      // Raw sockets connected by connectSockets().
-      expect(
-        registry.getInstance<RawDatagramSocket>(key: key, subkey: 'ipv4'),
-        isNotNull,
-      );
-      expect(
-        registry.getInstance<RawDatagramSocket>(key: key, subkey: 'ipv6'),
-        isNotNull,
-      );
-
-      // SHSP sockets and their migratable wrappers, per family.
-      for (final subkey in ['ipv4', 'ipv6']) {
+      // SHSP sockets and their migratable wrappers, per family, each on the
+      // raw socket connected for that same subkey.
+      for (final subkey in _availableSubkeys) {
+        final raw = registry.getInstance<RawDatagramSocket>(
+          key: key,
+          subkey: subkey,
+        );
         final socket = registry.getInstance<IShspSocket>(
           key: key,
           subkey: subkey,
@@ -37,16 +44,46 @@ void main() {
         addTearDown(() {
           if (!migratable.isClosed) migratable.destroy();
         });
+
         expect(socket.isClosed, isFalse, reason: subkey);
+        expect(socket.localPort, equals(raw.port), reason: subkey);
         expect(migratable.isClosed, isFalse, reason: subkey);
+        // The wrapper delegates to that very socket, it doesn't own another.
+        expect(
+          (migratable as ShspSocketMigratable).delegateSocket,
+          same(socket),
+          reason: subkey,
+        );
+        expect(
+          registry.getInstance<IShspSocket>(key: key, subkey: subkey),
+          same(socket),
+          reason: subkey,
+        );
       }
 
-      expect(registry.getInstance<IDualShspSocketAuto>(key: key), isNotNull);
-      expect(
-        registry.getInstance<IDualShspSocketMigratable>(key: key),
-        isNotNull,
+      final auto = registry.getInstance<IDualShspSocketAuto>(key: key);
+      final migratableDual = registry.getInstance<IDualShspSocketMigratable>(
+        key: key,
       );
-      expect(registry.getInstance<IRegistryShspSocket>(key: key), isNotNull);
+      final ipv4Wrapper = registry.getInstance<IShspSocketMigratable>(
+        key: key,
+        subkey: 'ipv4',
+      );
+      expect(auto.getSocketMigratable(InternetAddressType.IPv4),
+          same(ipv4Wrapper));
+      expect(migratableDual.getSocketMigratable(InternetAddressType.IPv4),
+          same(ipv4Wrapper));
+      // The SHSP socket registry resolves too, and reports the families this
+      // host actually got — which is what the graph was wired with.
+      final socketRegistry = registry.getInstance<IRegistryShspSocket>(
+        key: key,
+      );
+      expect(
+        socketRegistry.initialize(migratableDual),
+        _availableSubkeys.contains('ipv6')
+            ? ReturnTypeInitialization.ipv4and6
+            : ReturnTypeInitialization.ipv4only,
+      );
     });
 
     test('resolves the STUN half of the graph on the same sockets', () async {
@@ -60,34 +97,42 @@ void main() {
         subkey: 'ipv4',
       );
 
-      for (final subkey in ['ipv4', 'ipv6']) {
+      for (final subkey in _availableSubkeys) {
+        final raw = registry.getInstance<RawDatagramSocket>(
+          key: key,
+          subkey: subkey,
+        );
         final handler = registry.getInstance<IStunHandler>(
           key: key,
           subkey: subkey,
         );
         addTearDown(handler.close);
-        expect(handler, isNotNull, reason: subkey);
-
         final migratableHandler = registry.getInstance<IStunHandlerMigratable>(
           key: key,
           subkey: subkey,
         );
         addTearDown(migratableHandler.close);
-        expect(migratableHandler, isNotNull, reason: subkey);
+
+        // Both STUN representations sit on the socket of that same subkey —
+        // the one the SHSP wiring bound, not a new one.
+        expect(handler.getSocket(), same(raw), reason: subkey);
+        expect(migratableHandler.getSocket(), same(raw), reason: subkey);
       }
 
       final stunIpv4 = registry.getInstance<IStunHandler>(
         key: key,
         subkey: 'ipv4',
       );
-      expect(stunIpv4.getSocket().port, equals(rawIpv4.port));
+      expect(stunIpv4.getSocket(), same(rawIpv4));
 
       final dualStun = registry.getInstance<IDualStunHandler>(key: key);
       addTearDown(dualStun.close);
-      expect(dualStun, isNotNull);
+      expect(dualStun.ipv4Handler, same(stunIpv4));
       expect(
-        registry.getInstance<IDualStunHandlerMigratable>(key: key),
-        isNotNull,
+        registry
+            .getInstance<IDualStunHandlerMigratable>(key: key)
+            .getSocket(type: InternetAddressType.IPv4),
+        same(rawIpv4),
       );
     });
 
@@ -110,6 +155,15 @@ void main() {
         dual.dualStunHandler.ipv4Handler,
         same(dual.ipv4StunShspHandler),
       );
+      expect(
+        dual.ipv4StunShspHandler!.shspSocket,
+        same(
+          RegistryManager.instance.getInstance<IShspSocketMigratable>(
+            key: key,
+            subkey: 'ipv4',
+          ),
+        ),
+      );
     });
 
     test('resolves one IStunShspHandler per family, on the right socket',
@@ -122,7 +176,7 @@ void main() {
       for (final entry in {
         'ipv4': InternetAddressType.IPv4,
         'ipv6': InternetAddressType.IPv6,
-      }.entries) {
+      }.entries.where((e) => _availableSubkeys.contains(e.key))) {
         final handler = registry.getInstance<IStunShspHandler>(
           key: key,
           subkey: entry.key,

@@ -167,12 +167,14 @@ void main() {
 
       // The raw sockets come from the SHSP wiring, so the plain STUN handlers
       // share the endpoint with the SHSP sockets instead of binding new ones.
-      expect(stunIpv4.getSocket().port, equals(rawIpv4.port));
+      expect(stunIpv4.getSocket(), same(rawIpv4));
       expect(
         stunIpv4.getSocket().port,
         equals(dual.getSocket(InternetAddressType.IPv4)!.localPort),
       );
-      expect(dualStun.ipv4Handler, isNotNull);
+      expect(dualStun.ipv4Handler, same(stunIpv4));
+      // A different graph from the combined one: same endpoint, own handlers.
+      expect(dualStun, isNot(same(dual.dualStunHandler)));
     });
 
     test('the IPv6 half follows what the host supports', () async {

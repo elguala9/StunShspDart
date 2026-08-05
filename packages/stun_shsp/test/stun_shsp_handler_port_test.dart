@@ -28,9 +28,13 @@ void main() {
       expect(handler.shspSocket.isClosed, isFalse);
     });
 
-    test('stunHandler is accessible after createDefault', () async {
+    test('stunHandler is the delegate of the STUN surface', () async {
       handler = await StunShspHandler.createDefault(ipv6: false);
-      expect(handler.stunHandler, isNotNull);
+      expect(handler.stunHandler, same(handler.delegateStunHandler));
+      expect(
+        handler.stunHandler.getSocket().port,
+        equals(handler.shspSocket.localPort),
+      );
     });
 
     test('the STUN half is bound to the SHSP socket', () async {
@@ -60,14 +64,18 @@ void main() {
       expect(handler.shspSocket.isClosed, isTrue);
     });
 
-    test('shspSocket is an IShspSocketMigratable', () async {
+    test('shspSocket wraps the bound socket and is the SHSP delegate',
+        () async {
       handler = await StunShspHandler.createDefault(ipv6: false);
-      expect(handler.shspSocket, isA<IShspSocketMigratable>());
-    });
 
-    test('delegateSocket matches shspSocket', () async {
-      handler = await StunShspHandler.createDefault(ipv6: false);
       expect(handler.delegateSocket, same(handler.shspSocket));
+      // A wrapper, not the socket itself: it survives a migration (see the
+      // `migrateSocket` test) precisely because it is one level above.
+      expect(handler.shspSocket, isA<ShspSocketMigratable>());
+      expect(
+        (handler.shspSocket as ShspSocketMigratable).delegateSocket.localPort,
+        equals(handler.shspSocket.localPort),
+      );
     });
   });
 
@@ -78,27 +86,54 @@ void main() {
       handler.destroy();
     });
 
-    test('RawDatagramSocket methods are delegated from mixin', () async {
+    test('RawDatagramSocket members read through to the socket', () async {
       handler = await StunShspHandler.createDefault(ipv6: false);
-      expect(handler.port, greaterThan(0));
-      expect(handler.address, isA<InternetAddress>());
-      expect(handler.broadcastEnabled, isA<bool>());
-      expect(handler.readEventsEnabled, isA<bool>());
-      expect(handler.writeEventsEnabled, isA<bool>());
+      final socket = handler.shspSocket;
+
+      expect(handler.port, equals(socket.localPort));
+      expect(handler.address, equals(socket.localAddress));
+      // Written through and read back: a getter that returned a constant
+      // instead of delegating would not follow.
+      handler.broadcastEnabled = true;
+      expect(handler.broadcastEnabled, isTrue);
+      expect(socket.broadcastEnabled, isTrue);
+      handler.broadcastEnabled = false;
+      expect(handler.broadcastEnabled, isFalse);
+
+      handler.writeEventsEnabled = true;
+      expect(handler.writeEventsEnabled, equals(socket.writeEventsEnabled));
     });
 
-    test('Socket properties are delegated from mixin', () async {
+    test('socket properties read through to the socket', () async {
       handler = await StunShspHandler.createDefault(ipv6: false);
-      expect(handler.localAddress, isNotNull);
-      expect(handler.localPort, greaterThan(0));
-      expect(handler.compressionCodec, isNotNull);
+      final socket = handler.shspSocket;
+
+      expect(handler.localAddress, equals(socket.localAddress));
+      expect(handler.localPort, equals(socket.localPort));
+      expect(handler.compressionCodec, same(socket.compressionCodec));
       expect(handler.isClosed, isFalse);
+
+      handler.close();
+      expect(handler.isClosed, isTrue);
+      expect(socket.isClosed, isTrue);
     });
 
-    test('IShspSocket methods are delegated from mixin', () async {
+    test('extractProfile carries the registered callbacks, applyProfile '
+        'restores them', () async {
       handler = await StunShspHandler.createDefault(ipv6: false);
+      final peer = PeerInfo(address: InternetAddress.loopbackIPv4, port: 9701);
+      final peerKey = MessageCallbackMap.formatKey(peer.address, peer.port);
+
+      handler.setMessageCallback(peer, (_) {});
       final profile = handler.extractProfile();
-      handler.applyProfile(profile);
+      expect(profile.messageListeners.keys, contains(peerKey));
+
+      final fresh = await ShspSocket.bindDefault(ipv6: false);
+      addTearDown(fresh.close);
+      expect(fresh.extractProfile().messageListeners, isEmpty);
+
+      fresh.applyProfile(profile);
+      expect(fresh.extractProfile().messageListeners.keys, contains(peerKey));
     });
 
     test('migrateSocket moves both halves onto the new socket', () async {

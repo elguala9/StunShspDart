@@ -112,6 +112,11 @@ void main() {
         key: key,
         subkey: 'ipv4',
       );
+      final oldMigratable = registry.getInstance<IStunHandlerMigratable>(
+        key: key,
+        subkey: 'ipv4',
+      );
+      final oldPort = oldStunHandler.getSocket().port;
 
       final raw = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
       await migrateStunShspSocket(raw, key: key);
@@ -122,11 +127,14 @@ void main() {
       );
       expect(newStunHandler, isNot(same(oldStunHandler)));
       expect(newStunHandler.getSocket(), same(raw));
-      // The migratable STUN handler stays put, like every other live router.
+      expect(newStunHandler.getSocket().port, isNot(oldPort));
+      // The migratable STUN handler stays put, like every other live router:
+      // it is the source of truth the new plain handler was seeded from.
       expect(
         registry.getInstance<IStunHandlerMigratable>(key: key, subkey: 'ipv4'),
-        isNotNull,
+        same(oldMigratable),
       );
+      expect(newStunHandler.getIpVersion(), InternetAddressType.IPv4);
       expect(graph.dual.getSocket(InternetAddressType.IPv4)!.localPort,
           raw.port);
     });

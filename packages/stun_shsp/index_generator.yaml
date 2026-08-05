@@ -11,6 +11,24 @@ index_generator:
         - src/**
         - main_injection.dart
       exports:
+        # The `stun` barrel also exports its @internal mixins; re-exporting
+        # them from here would be `invalid_export_of_internal_element`, which
+        # `dart analyze --fatal-infos` (melos run analyze) rejects. They are
+        # implementation details of that package and nothing here uses them.
         - package: package:stun/stun.dart
+          hide:
+            - DestroyableHandlerMixin
+            - DualHandlerDelegationMixin
+            - DualStunHandlerMigratableMixin
+            - DualStunHandlerMixin
+            - HandlerFactoryMixin
+            - HandlerSelectorMixin
+            - NATDetectorMixin
+            - NATTestResult
+            - StunHandlerMigratableMixin
+            - StunHandlerMixin
+            - StunLoggerMixin
+            - StunMessageMixin
+            - StunServerResolverMixin
         - package: package:shsp/shsp.dart
         - package: package:singleton_manager/singleton_manager.dart
