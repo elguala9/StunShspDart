@@ -9,7 +9,7 @@ A Dart package that combines the [STUN](https://pub.dev/packages/stun) and [SHSP
 - **SHSP socket** for compressed, structured UDP communication
 - **Socket migration** — swap a socket at runtime and both halves follow it
 - **NAT compatibility check** — `NATDetectorShsp` tells you whether the detected NAT type can carry SHSP at all
-- **Configuration** through [`config_manager`](https://pub.dev/packages/config_manager), in the `stun_shsp` sector
+- **Configuration** through [`config_manager`](https://pub.dev/packages/config_manager): reads the `stun` and `shsp` sectors, and owns only the bind ports
 - **Dependency injection** through [`singleton_manager`](https://pub.dev/packages/singleton_manager), with generated factories and one-call wiring
 
 ## Installation
@@ -133,30 +133,40 @@ Nothing that routes is replaced: the registered `IStunShspHandler`, the `IShspSo
 
 ### Configuration
 
-Defaults live in the `stun_shsp` sector of `config_manager`, next to the `stun` and `shsp` sectors owned by those packages. Nothing has to be loaded: every getter falls back to `defaultStunShspConfig`.
+This package does not re-declare what `stun` and `shsp` already configure: it **reads their sectors**, so configuring them configures the combined handlers too and there is never a second copy of a value to keep in sync. Its own `stun_shsp` sector holds only the bind ports — nothing in `stun`/`shsp` configures one, and a dual handler needs one per family.
+
+| Key | Sector | Default | Used by |
+|---|---|---|---|
+| `stunShspConfig.socket.port` | `stun_shsp` | `0` | `StunShspHandler.createDefault` |
+| `stunShspConfig.socket.ipv4Port` | `stun_shsp` | `0` | `DualStunShspHandler.createDefault` |
+| `stunShspConfig.socket.ipv6Port` | `stun_shsp` | `0` | `DualStunShspHandler.createDefault` |
+| `ipVersion` | `stun` | `IPv6` | `StunShspHandler.createDefault` (as `ipv6`) |
+| `server.address` / `server.port` / `timeoutSeconds` | `stun` | `stun.l.google.com:19302`, `5.0` | `StunShspHandler`, i.e. `StunHandler` |
+| `nat.primaryServer` / `nat.primaryPort` / `nat.timeoutSeconds` | `stun` | `stun.l.google.com:19302`, `5.0` | `NATDetectorShsp` |
+| `shspConfig.keepAliveSeconds`, `handshake`, `retry` | `shsp` | see `defaultShspConfig` | the SHSP half |
+
+So `initStunConfig`/`initShspConfig` are enough:
+
+```dart
+initStunConfig({'ipVersion': 'IPv4', 'nat': {'primaryServer': 'stun.cloudflare.com'}});
+
+final handler = await StunShspHandler.createDefault();   // IPv4, from `stun`
+final detector = NATDetectorShsp(socket: handler);       // cloudflare, from `stun`
+```
+
+`initStunShspConfig` stays as the single entry point when you'd rather not call three: it loads the ports into its own sector and **forwards** the rest to the owning one — `socket.ipv6` to `stun` as `ipVersion`, `nat` to `stun`, a `shsp` section to `shsp`.
 
 ```dart
 initStunShspConfig({
-  'socket': {'ipv6': false, 'port': 5000},
-  'nat': {'primaryServer': 'stun.cloudflare.com', 'primaryPort': 3478},
+  'socket': {'ipv6': false, 'port': 5000},                                  // stun_shsp + stun
+  'nat': {'primaryServer': 'stun.cloudflare.com', 'primaryPort': 3478},     // -> stun
+  'shsp': {'keepAliveSeconds': 11},                                         // -> shsp
 });
-
-// Unset arguments now come from the configuration.
-final handler = await StunShspHandler.createDefault();
-final detector = NATDetectorShsp(socket: handler);
 ```
 
-| Key | Default | Used by |
-|---|---|---|
-| `socket.ipv6` | `true` | `StunShspHandler.createDefault` |
-| `socket.port` | `0` | `StunShspHandler.createDefault` |
-| `socket.ipv4Port` | `0` | `DualStunShspHandler.createDefault` |
-| `socket.ipv6Port` | `0` | `DualStunShspHandler.createDefault` |
-| `nat.primaryServer` | `stun.l.google.com` | `NATDetectorShsp` |
-| `nat.primaryPort` | `19302` | `NATDetectorShsp` |
-| `nat.timeoutSeconds` | `5.0` | `NATDetectorShsp` |
+Only the keys actually present are forwarded, and everything is deep-merged, so a configuration loaded earlier keeps every value the call doesn't mention; called with no arguments it resets every sector it reads back to its defaults. It accepts either the bare section or a larger document nesting it under `stunShspConfigKey`, so a multi-domain JSON blob can be handed over as-is.
 
-`initStunShspConfig` deep-merges its argument onto the defaults and accepts either the bare section or a larger document nesting it under `stunShspConfigKey`, so a multi-domain JSON blob can be handed over as-is. To read the values from your own class, mix `StunShspConfigExtension` on top of `ConfigExtension`; in static contexts use the top-level helpers (`defaultStunShspIpv6Enabled()`, `defaultStunShspNatTimeout()`, `stunShspConfigValue([...])`, ...).
+To read the values from your own class, mix `StunShspConfigExtension` on top of `ConfigExtension`: it exposes the ports *and* the borrowed values (`defaultIpv6Enabled`, `defaultNatPrimaryServer`, `defaultStunServerAddress`, `defaultKeepAliveSeconds`, ...) so there is one place to look. Those borrowed getters always read the sector that owns the value, whatever `configSector` points at. In static contexts use the top-level helpers (`defaultStunShspIpv6Enabled()`, `defaultStunShspNatTimeout()`, `stunShspConfigValue(['socket', 'port'])`, and `stunConfigValue([...])` from the `stun` package for its sector).
 
 ### NAT compatibility
 

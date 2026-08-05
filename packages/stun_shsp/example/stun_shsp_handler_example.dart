@@ -47,7 +47,8 @@ Future<void> stunShspHandlerCreateDefaultPortExample() async {
   handler.close();
 }
 
-/// Everything left unset comes from the `stun_shsp` configuration sector.
+/// Everything left unset comes from the configuration: the port from the
+/// `stun_shsp` sector, the address family from the `stun` one.
 Future<void> stunShspHandlerCreateDefaultFromConfigExample() async {
   initStunShspConfig({
     'socket': {'ipv6': false, 'port': 0},
