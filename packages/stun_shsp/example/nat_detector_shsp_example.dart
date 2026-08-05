@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:stun_shsp/stun_shsp.dart';
 
-/// Constructor `NATDetectorShsp({primaryServer, primaryPort, socket, timeout})`
+/// Constructor `NATDetectorShsp({socket, primaryServer, primaryPort, timeout})`
 Future<void> natDetectorShspConstructorExample() async {
   final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
   final detector = NATDetectorShsp(
@@ -13,6 +13,27 @@ Future<void> natDetectorShspConstructorExample() async {
   );
   print('NATDetectorShsp created: ${detector.runtimeType}');
   socket.close();
+}
+
+/// Only the socket is required — the server and the timeout come from the
+/// `nat` section of the `stun_shsp` configuration sector.
+Future<void> natDetectorShspFromConfigExample() async {
+  final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+  final detector = NATDetectorShsp(socket: socket);
+  print('NATDetectorShsp from config: '
+      '${detector.primaryServer}:${detector.primaryPort} '
+      'timeout=${detector.timeout}');
+  socket.close();
+}
+
+/// The detector can run straight on a combined handler's socket, so the NAT
+/// probe and the SHSP traffic share the mapping the NAT sees.
+Future<void> natDetectorShspOnHandlerSocketExample() async {
+  final handler = await StunShspHandler.createDefault(ipv6: false);
+  final detector = NATDetectorShsp(socket: handler);
+  print('NATDetectorShsp bound to the handler socket on port '
+      '${handler.localPort}: ${detector.runtimeType}');
+  handler.close();
 }
 
 /// `natShspCompatibility()` — performs full NAT detection and adds SHSP compatibility check.

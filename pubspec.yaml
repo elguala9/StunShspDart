@@ -11,6 +11,15 @@ workspace:
 dev_dependencies:
   melos: ^7.4.1
 
+# Local checkouts of the sibling repositories: stun_shsp tracks their
+# unpublished state (config_manager, singleton_manager 2.x). Comment out to go
+# back to the pub.dev releases.
+dependency_overrides:
+  shsp:
+    path: ../SingleHandShakeProtocolDart/packages/shsp
+  stun:
+    path: ../StunDart/packages/Stun
+
 melos:
   repository: https://github.com/your-org/stun_shsp_dart
 
@@ -36,6 +45,16 @@ melos:
     analyze:
       description: Analyze all packages
       exec: dart analyze --fatal-infos
+
+    barrels:
+      description: Regenerate the barrel files (indexes) with index_generator
+      exec: dart run index_generator
+
+    registry:
+      description: Regenerate the singleton registry (lib/main_injection.dart) and the DI factories
+      exec: dart run singleton_manager_generator --input lib --registry-output lib/src/main_injection.dart
+      packageFilters:
+        scope: stun_shsp
 
     publish:
       description: Publish packages (dry run)

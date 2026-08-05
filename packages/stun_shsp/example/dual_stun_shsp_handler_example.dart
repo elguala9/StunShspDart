@@ -1,4 +1,6 @@
 // ignore_for_file: avoid_print
+import 'dart:io';
+
 import 'package:stun_shsp/stun_shsp.dart';
 
 // ============================================================================
@@ -6,36 +8,52 @@ import 'package:stun_shsp/stun_shsp.dart';
 // ============================================================================
 
 Future<void> dualStunShspHandlerConstructorExample() async {
-  final ipv4Socket = await ShspSocket.bindDefault(ipv6: false, port: 0);
-  final ipv6Socket = await ShspSocket.bindDefault(ipv6: true, port: 0);
-  final handler = DualStunShspHandler(ipv4Socket, ipv6Socket);
-  print('DualStunShspHandler created via constructor, '
-        'IPv4 port=${handler.ipv4ShspSocket.localPort}, '
-        'IPv6 port=${handler.ipv6ShspSocket.localPort}');
+  final ipv4Socket = await ShspSocket.bindDefault(ipv6: false);
+  final ipv6Socket = await ShspSocket.bindIfPossible(
+    InternetAddress.anyIPv6,
+    0,
+  );
+  final handler = DualStunShspHandler.fromSockets(
+    Sockets(ipv4SocketImpl: ipv4Socket, ipv6SocketImpl: ipv6Socket),
+  );
+  print('DualStunShspHandler created from sockets, '
+      'ipv4=${handler.getSocket(InternetAddressType.IPv4)?.localPort} '
+      'ipv6=${handler.getSocket(InternetAddressType.IPv6)?.localPort}');
+  handler.destroy();
+}
+
+Future<void> dualStunShspHandlerFromMigratableExample() async {
+  final ipv4 = ShspSocketMigratable(await ShspSocket.bindDefault(ipv6: false));
+  final handler = DualStunShspHandler(ipv4Migratable: ipv4);
+  print('DualStunShspHandler created from an IPv4 migratable socket only, '
+      'ipv6StunShspHandler=${handler.ipv6StunShspHandler}');
   handler.destroy();
 }
 
 Future<void> dualStunShspHandlerCreateDefaultExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  print('createDefault: IPv4 port=${handler.ipv4ShspSocket.localPort}, '
-        'IPv6 port=${handler.ipv6ShspSocket.localPort}');
+  print('createDefault() bound '
+      'ipv4=${handler.getSocket(InternetAddressType.IPv4)?.localPort} '
+      'ipv6=${handler.getSocket(InternetAddressType.IPv6)?.localPort}');
   handler.destroy();
 }
 
 Future<void> dualStunShspHandlerCreateDefaultPortsExample() async {
   final handler = await DualStunShspHandler.createDefault(
-    ipv4Port: 5000,
-    ipv6Port: 6000,
+    ipv4Port: 0,
+    ipv6Port: 0,
   );
-  print('createDefault(ports): IPv4=${handler.ipv4ShspSocket.localPort}, '
-        'IPv6=${handler.ipv6ShspSocket.localPort}');
+  print('createDefault(ports) bound '
+      'ipv4=${handler.getSocket(InternetAddressType.IPv4)?.localPort}');
   handler.destroy();
 }
 
 Future<void> dualStunShspHandlerCreateDefaultCodecExample() async {
-  final codec = GZipCodec();
-  final handler = await DualStunShspHandler.createDefault(compressionCodec: codec);
-  print('createDefault(codec): IPv4 port=${handler.ipv4ShspSocket.localPort}');
+  final handler = await DualStunShspHandler.createDefault(
+    compressionCodec: GZipCodec(),
+  );
+  print('createDefault with GZipCodec, '
+      'codec=${handler.compressionCodec.runtimeType}');
   handler.destroy();
 }
 
@@ -45,34 +63,28 @@ Future<void> dualStunShspHandlerCreateDefaultCodecExample() async {
 
 Future<void> dualStunShspHandlerStunShspGettersExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  final ipv4h = handler.ipv4StunShspHandler;
-  final ipv6h = handler.ipv6StunShspHandler;
-  print('ipv4StunShspHandler port=${ipv4h.shspSocket.localPort}');
-  print('ipv6StunShspHandler port=${ipv6h.shspSocket.localPort}');
+  print('ipv4StunShspHandler=${handler.ipv4StunShspHandler?.localPort} '
+      'ipv6StunShspHandler=${handler.ipv6StunShspHandler?.localPort} '
+      'getStunShspHandler(IPv4)='
+      '${handler.getStunShspHandler(InternetAddressType.IPv4)?.localPort}');
   handler.destroy();
 }
 
-Future<void> dualStunShspHandlerShspSocketGettersExample() async {
+Future<void> dualStunShspHandlerSocketGettersExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  final ipv4s = handler.ipv4ShspSocket;
-  final ipv6s = handler.ipv6ShspSocket;
-  print('ipv4ShspSocket port=${ipv4s.localPort}');
-  print('ipv6ShspSocket port=${ipv6s.localPort}');
+  print('getSocket(IPv4)='
+      '${handler.getSocket(InternetAddressType.IPv4)?.localPort} '
+      'getSocketMigratable(IPv4)='
+      '${handler.getSocketMigratable(InternetAddressType.IPv4).localPort}');
   handler.destroy();
 }
 
-Future<void> dualStunShspHandlerDelegateDualSocketExample() async {
+Future<void> dualStunShspHandlerDualStunHandlerExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  final ds = handler.delegateDualSocket;
-  print('delegateDualSocket ipv4 closed=${ds.ipv4Socket?.isClosed}, '
-        'ipv6 closed=${ds.ipv6Socket?.isClosed}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerDelegateDualStunHandlerExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final dsh = handler.delegateDualStunHandler;
-  print('delegateDualStunHandler ipv4Handler present=${dsh.ipv4Handler != null}');
+  final stun = handler.dualStunHandler;
+  print('dualStunHandler=${stun.runtimeType}, '
+      'ipv4Handler is the combined handler='
+      '${identical(stun.ipv4Handler, handler.ipv4StunShspHandler)}');
   handler.destroy();
 }
 
@@ -80,249 +92,166 @@ Future<void> dualStunShspHandlerDelegateDualStunHandlerExample() async {
 // DualStunShspHandler — own methods
 // ============================================================================
 
-Future<void> dualStunShspHandlerRefreshSocketIpv4Example() async {
+Future<void> dualStunShspHandlerRefreshSocketExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  final oldPort = handler.ipv4ShspSocket.localPort;
-  final newSocket = handler.refreshSocketIpv4();
-  print('refreshSocketIpv4: old=$oldPort new=${newSocket.localPort}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerRefreshSocketIpv6Example() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final oldPort = handler.ipv6ShspSocket.localPort;
-  final newSocket = handler.refreshSocketIpv6();
-  print('refreshSocketIpv6: old=$oldPort new=${newSocket.localPort}');
+  final before = handler.getSocket(InternetAddressType.IPv4)?.localPort;
+  handler.refreshSocket(InternetAddressType.IPv4);
+  // The rebind is asynchronous; the migration that follows it rebuilds the
+  // combined handler for that family on its own.
+  await Future<void>.delayed(const Duration(milliseconds: 200));
+  print('refreshSocket(IPv4): $before -> '
+      '${handler.getSocket(InternetAddressType.IPv4)?.localPort}');
   handler.destroy();
 }
 
 Future<void> dualStunShspHandlerRefreshSocketsExample() async {
   final handler = await DualStunShspHandler.createDefault();
   final sockets = handler.refreshSockets();
-  print('refreshSockets: ipv4 port=${sockets.ipv4SocketImpl?.localPort}, '
-        'ipv6 port=${sockets.ipv6SocketImpl?.localPort}');
+  await Future<void>.delayed(const Duration(milliseconds: 200));
+  print('refreshSockets() -> ipv4=${sockets.ipv4SocketImpl?.localPort} '
+      'ipv6=${sockets.ipv6SocketImpl?.localPort}');
   handler.destroy();
 }
 
 Future<void> dualStunShspHandlerMigrateSocketIpv4Example() async {
   final handler = await DualStunShspHandler.createDefault();
-  final oldPort = handler.ipv4ShspSocket.localPort;
-  final newSocket = await ShspSocket.bindDefault(ipv6: false, port: 0);
+  final newSocket = await ShspSocket.bindDefault(ipv6: false);
   handler.migrateSocketIpv4(newSocket);
-  print('migrateSocketIpv4: old=$oldPort new=${handler.ipv4ShspSocket.localPort}');
+  print('migrateSocketIpv4 -> socket='
+      '${handler.getSocket(InternetAddressType.IPv4)?.localPort} '
+      'stun=${handler.dualStunHandler.ipv4Handler?.getSocket().port}');
   handler.destroy();
 }
 
-Future<void> dualStunShspHandlerMigrateSocketIpv6Example() async {
+Future<void> dualStunShspHandlerMigrateSocketExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  final oldPort = handler.ipv6ShspSocket.localPort;
-  final newSocket = await ShspSocket.bindDefault(ipv6: true, port: 0);
-  handler.migrateSocketIpv6(newSocket);
-  print('migrateSocketIpv6: old=$oldPort new=${handler.ipv6ShspSocket.localPort}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerDestroyExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  handler.destroy();
-  print('destroy: ipv4 closed=${handler.ipv4ShspSocket.isClosed}, '
-        'ipv6 closed=${handler.ipv6ShspSocket.isClosed}');
-}
-
-// ============================================================================
-// DualStunShspHandler — IDualStunHandlerDelegationMixin getters / methods
-// ============================================================================
-
-Future<void> dualStunShspHandlerIpHandlersExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  print('ipv4Handler: ${handler.ipv4Handler?.runtimeType}');
-  print('ipv6Handler: ${handler.ipv6Handler?.runtimeType}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerSetIpHandlerExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final stun = handler.ipv4StunShspHandler.stunHandler;
-  handler.clearIpv4Handler();
-  handler.setIpv4Handler(stun);
-  print('setIpv4Handler: handler re-injected');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerClearHandlerExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  handler.clearIpv4Handler();
-  print('clearIpv4Handler: ipv4Handler is null=${handler.ipv4Handler == null}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerReplaceHandlerExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final stun = handler.ipv4StunShspHandler.stunHandler;
-  handler.replaceHandler(stun, ipv6: false);
-  print('replaceHandler: IPv4 handler replaced in-place');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerPerformStunRequestExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final response = await handler.performStunRequest();
-  print('performStunRequest ipv4: ${response.stunResponseIpv4?.publicIp}:${response.stunResponseIpv4?.publicPort}');
-  print('performStunRequest ipv6: ${response.stunResponseIpv6?.publicIp}:${response.stunResponseIpv6?.publicPort}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerPerformLocalRequestExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final info = await handler.performLocalRequest();
-  print('performLocalRequest ipv4: ${info.localDualInfoIpv4?.localIp}:${info.localDualInfoIpv4?.localPort}');
-  print('performLocalRequest ipv6: ${info.localDualInfoIpv6?.localIp}:${info.localDualInfoIpv6?.localPort}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerPingStunServerExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final ipv4Alive = await handler.pingStunServer(ipv6: false);
-  final ipv6Alive = await handler.pingStunServer(ipv6: true);
-  print('pingStunServer: ipv4=$ipv4Alive, ipv6=$ipv6Alive');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerGetSocketExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final ipv4Raw = handler.getSocket(ipv6: false);
-  final ipv6Raw = handler.getSocket(ipv6: true);
-  print('getSocket: ipv4 port=${ipv4Raw.port}, ipv6 port=${ipv6Raw.port}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerSetStunServerExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  handler.setStunServer('stun.l.google.com', 19302);
-  print('setStunServer: applied to both (ipv6 omitted)');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerSetStunServerPerProtocolExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  handler.setStunServer('stun.l.google.com', 19302, ipv6: false);
-  handler.setStunServer('stun.l.google.com', 19302, ipv6: true);
-  print('setStunServer: configured per protocol');
+  final newSocket = await ShspSocket.bindDefault(ipv6: false);
+  handler.migrateSocket(newSocket, InternetAddressType.IPv4);
+  print('migrateSocket(IPv4) -> '
+      '${handler.getSocket(InternetAddressType.IPv4)?.localPort}');
   handler.destroy();
 }
 
 Future<void> dualStunShspHandlerCloseExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  handler.close(ipv6: false);
-  print('close(ipv6:false): ipv4 closed=${handler.ipv4ShspSocket.isClosed}');
-  handler.close(ipv6: true);
-  print('close(ipv6:true): ipv6 closed=${handler.ipv6ShspSocket.isClosed}');
+  handler.close(type: InternetAddressType.IPv4);
+  print('close(type: IPv4) -> '
+      'ipv4Closed=${handler.getSocket(InternetAddressType.IPv4)?.isClosed} '
+      'allClosed=${handler.isClosed}');
+  handler.close();
+  print('close() -> allClosed=${handler.isClosed}');
 }
 
-Future<void> dualStunShspHandlerLastStunTimestampsExample() async {
+Future<void> dualStunShspHandlerDestroyExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  await handler.performStunRequest();
-  print('ipv4LastStunUpdated: ${handler.ipv4LastStunUpdated}');
-  print('ipv6LastStunUpdated: ${handler.ipv6LastStunUpdated}');
+  handler.destroy();
+  print('destroy() -> isClosed=${handler.isClosed}');
+}
+
+// ============================================================================
+// DualStunShspHandler — DualStunHandlerDelegationMixin (the STUN half)
+// ============================================================================
+
+Future<void> dualStunShspHandlerPerformStunRequestExample() async {
+  final handler = await DualStunShspHandler.createDefault();
+  try {
+    final response = await handler.performStunRequest();
+    print('performStunRequest -> '
+        'v4=${response.publicIp(InternetAddressType.IPv4)} '
+        'v6=${response.publicIp(InternetAddressType.IPv6)}');
+  } catch (e) {
+    print('performStunRequest failed (no network?): $e');
+  }
   handler.destroy();
 }
 
-Future<void> dualStunShspHandlerLastLocalTimestampsExample() async {
+Future<void> dualStunShspHandlerPerformLocalRequestExample() async {
+  final handler = await DualStunShspHandler.createDefault();
+  final local = await handler.performLocalRequest();
+  print('performLocalRequest -> v4=${local.localIpv4}:${local.localPortIpv4} '
+      'v6=${local.localIpv6}:${local.localPortIpv6}');
+  handler.destroy();
+}
+
+Future<void> dualStunShspHandlerPingStunServerExample() async {
+  final handler = await DualStunShspHandler.createDefault();
+  print('pingStunServer -> ${await handler.pingStunServer()}');
+  handler.destroy();
+}
+
+Future<void> dualStunShspHandlerSetStunServerExample() async {
+  final handler = await DualStunShspHandler.createDefault();
+  handler.setStunServer('stun.cloudflare.com', 3478);
+  handler.setStunServer(
+    'stun.l.google.com',
+    19302,
+    type: InternetAddressType.IPv4,
+  );
+  print('setStunServer applied to both families, then to IPv4 only');
+  handler.destroy();
+}
+
+Future<void> dualStunShspHandlerHandlerSlotsExample() async {
+  final handler = await DualStunShspHandler.createDefault();
+  final ipv4 = handler.getHandler(type: InternetAddressType.IPv4);
+  print('getHandler(IPv4)=${ipv4?.runtimeType}');
+
+  handler.clearHandler(type: InternetAddressType.IPv4);
+  print('after clearHandler -> ${handler.ipv4Handler}');
+
+  if (ipv4 != null) {
+    handler.setHandler(ipv4, type: InternetAddressType.IPv4);
+    print('after setHandler -> ${handler.ipv4Handler?.runtimeType}');
+    handler.replaceHandler(ipv4, type: InternetAddressType.IPv4);
+    print('after replaceHandler -> ${handler.ipv4Handler?.runtimeType}');
+  }
+  handler.destroy();
+}
+
+Future<void> dualStunShspHandlerTimestampsExample() async {
   final handler = await DualStunShspHandler.createDefault();
   await handler.performLocalRequest();
-  print('ipv4LastLocalUpdated: ${handler.ipv4LastLocalUpdated}');
-  print('ipv6LastLocalUpdated: ${handler.ipv6LastLocalUpdated}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerLastStunUpdatedExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  await handler.performStunRequest();
-  print('lastStunUpdated: ${handler.lastStunUpdated}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerLastLocalUpdatedExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  await handler.performLocalRequest();
-  print('lastLocalUpdated: ${handler.lastLocalUpdated}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerInitializeDIExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  await handler.initializeDI();
-  print('initializeDI: completed');
+  print('lastLocalUpdated=${handler.lastLocalUpdated} '
+      'ipv4=${handler.getLastLocalUpdated(type: InternetAddressType.IPv4)} '
+      'lastStunUpdated=${handler.lastStunUpdated}');
   handler.destroy();
 }
 
 // ============================================================================
-// DualStunShspHandler — DualShspSocketWrapperDelegationMixin properties
+// DualStunShspHandler — the dual SHSP socket it is
 // ============================================================================
 
-Future<void> dualStunShspHandlerRawSocketsExample() async {
+Future<void> dualStunShspHandlerSendToExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  print('ipv4Socket: port=${handler.ipv4Socket?.localPort}');
-  print('ipv6Socket: port=${handler.ipv6Socket?.localPort}');
+  final peer = PeerInfo(
+    address: InternetAddress.loopbackIPv4,
+    port: handler.getSocket(InternetAddressType.IPv4)!.localPort!,
+  );
+  print('sendTo -> ${handler.sendTo([1, 2, 3], peer)} byte(s) '
+      'routed to the IPv4 socket');
   handler.destroy();
 }
 
-Future<void> dualStunShspHandlerSocketWrappersExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  print('ipv4SocketWrapper: port=${handler.ipv4SocketWrapper.localPort}');
-  print('ipv6SocketWrapper: port=${handler.ipv6SocketWrapper.localPort}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerSocketImplExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  print('ipv4SocketImpl: port=${handler.ipv4SocketImpl?.localPort}');
-  print('ipv6SocketImpl: port=${handler.ipv6SocketImpl?.localPort}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerExtractProfileExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final profile = handler.extractProfile();
-  print('extractProfile: ${profile.runtimeType}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerApplyProfileExample() async {
+Future<void> dualStunShspHandlerProfileExample() async {
   final handler = await DualStunShspHandler.createDefault();
   final profile = handler.extractProfile();
   handler.applyProfile(profile);
-  print('applyProfile: profile reapplied');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerDualSocketStateExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  print('isClosed: ${handler.isClosed}');
-  print('localAddress: ${handler.localAddress}');
-  print('localPort: ${handler.localPort}');
-  print('compressionCodec: ${handler.compressionCodec.runtimeType}');
-  handler.destroy();
-}
-
-Future<void> dualStunShspHandlerRawSocketExample() async {
-  final handler = await DualStunShspHandler.createDefault();
-  final raw = handler.socket;
-  print('socket (RawDatagramSocket): port=${raw.port}, address=${raw.address}');
+  print('extractProfile/applyProfile round-trip done');
   handler.destroy();
 }
 
 Future<void> dualStunShspHandlerSerializedObjectExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  final serialized = handler.serializedObject();
-  print('serializedObject: length=${serialized.length}');
+  print('serializedObject=${handler.serializedObject()}');
   handler.destroy();
 }
 
 Future<void> dualStunShspHandlerCallbacksExample() async {
   final handler = await DualStunShspHandler.createDefault();
-  handler.onClose.register((socket) => print('dual socket closed on ${socket.localPort}'));
-  handler.onListening.register((socket) => print('dual socket listening on ${socket.localPort}'));
-  print('onClose / onListening callbacks registered');
+  handler.onClose.register(
+    (socket) => print('socket closed: ${socket.localPort}'),
+  );
+  handler.onError.register((e) => print('socket error: ${e.error}'));
+  print('close/error callbacks registered');
   handler.destroy();
 }

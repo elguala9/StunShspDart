@@ -1,12 +1,31 @@
-import 'package:singleton_manager/singleton_manager.dart';
-import 'package:stun/stun.dart';
-import 'package:shsp/shsp.dart';
-import 'package:stun_shsp/src/imlementations/stun_shsp_handler.dart';
+import 'dart:io';
 
-/// Interface for a handler combining STUN protocol with SHSP Socket
-abstract interface class IDualStunShspHandler implements IValueForRegistry, IDualStunHandler, IDualShspSocketAuto {
-  StunShspHandler get ipv4StunShspHandler;
-  StunShspHandler get ipv6StunShspHandler;
-  IShspSocketWrapper get ipv4ShspSocket;
-  IShspSocketWrapper get ipv6ShspSocket;
+import 'package:shsp/shsp.dart';
+import 'package:stun/stun.dart';
+
+import 'i_stun_shsp_handler.dart';
+
+/// A dual-stack SHSP socket whose two families also answer STUN.
+///
+/// It is an [IDualShspSocketAuto] — a router over an IPv4 and an IPv6 socket,
+/// not a socket itself — so it can be passed anywhere SHSP expects a dual
+/// socket. It is *not* an [IDualStunHandler], because that interface and
+/// `IDualShspSocket` declare incompatible `getSocket` members; the dual STUN
+/// handler is exposed as [dualStunHandler] instead, and the rest of its
+/// surface is forwarded by `DualStunHandlerDelegationMixin`.
+abstract interface class IDualStunShspHandler implements IDualShspSocketAuto {
+  /// The STUN half: one handler per address family, fanning requests out.
+  IDualStunHandler get dualStunHandler;
+
+  /// The combined handler for [type], or `null` when that family has no
+  /// socket bound.
+  IStunShspHandler? getStunShspHandler([
+    InternetAddressType type = InternetAddressType.IPv6,
+  ]);
+
+  /// The combined IPv4 handler, or `null` when no IPv4 socket is bound.
+  IStunShspHandler? get ipv4StunShspHandler;
+
+  /// The combined IPv6 handler, or `null` when no IPv6 socket is bound.
+  IStunShspHandler? get ipv6StunShspHandler;
 }
