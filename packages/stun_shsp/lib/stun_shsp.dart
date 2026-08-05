@@ -4,7 +4,21 @@ library stun_shsp;
 
 export 'package:shsp/shsp.dart';
 export 'package:singleton_manager/singleton_manager.dart';
-export 'package:stun/stun.dart';
+export 'package:stun/stun.dart'
+    hide
+        DestroyableHandlerMixin,
+        DualHandlerDelegationMixin,
+        DualStunHandlerMigratableMixin,
+        DualStunHandlerMixin,
+        HandlerFactoryMixin,
+        HandlerSelectorMixin,
+        NATDetectorMixin,
+        NATTestResult,
+        StunHandlerMigratableMixin,
+        StunHandlerMixin,
+        StunLoggerMixin,
+        StunMessageMixin,
+        StunServerResolverMixin;
 
 export 'src/config/stun_shsp_config.dart';
 export 'src/factories/stun_shsp_registry_wiring.dart';

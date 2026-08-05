@@ -15,7 +15,9 @@ void main() async {
 
     test('createDefault with ipv6: true creates handler with IPv6', () async {
       handler = await StunShspHandler.createDefault(ipv6: true);
-      expect(handler.shspSocket, isNotNull);
+      expect(handler.shspSocket.localAddress?.type,
+          equals(InternetAddressType.IPv6));
+      expect(handler.getIpVersion(), equals(InternetAddressType.IPv6));
       expect(handler.shspSocket.localPort, greaterThan(0));
     });
 

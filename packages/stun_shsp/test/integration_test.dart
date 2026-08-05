@@ -27,27 +27,38 @@ void main() {
       expect(handler.shspSocket.localPort, greaterThan(0));
     });
 
-    test('both halves are reachable', () {
-      expect(handler.stunHandler, isNotNull);
-      expect(handler.getSocket().port, equals(handler.shspSocket.localPort));
+    test('both halves are reachable, on one endpoint', () {
+      expect(handler.stunHandler.getSocket().port,
+          equals(handler.shspSocket.localPort));
+      expect(handler.getSocket(), same(handler.stunHandler.getSocket()));
+      expect(handler.getIpVersion(), InternetAddressType.IPv4);
     });
 
-    test('RawDatagramSocket properties are accessible', () {
-      expect(handler.port, greaterThan(0));
-      expect(handler.address, isA<InternetAddress>());
-      expect(handler.broadcastEnabled, isA<bool>());
+    test('the RawDatagramSocket surface reads through to the socket', () {
+      expect(handler.port, equals(handler.shspSocket.localPort));
+      expect(handler.address, equals(handler.shspSocket.localAddress));
+      expect(handler.address.type, InternetAddressType.IPv4);
     });
 
-    test('socket properties are accessible', () {
-      expect(handler.localAddress, isNotNull);
-      expect(handler.localPort, greaterThan(0));
-      expect(handler.compressionCodec, isNotNull);
+    test('the socket surface reads through to the socket', () {
+      expect(handler.localAddress, equals(handler.shspSocket.localAddress));
+      expect(handler.localPort, equals(handler.shspSocket.localPort));
+      expect(handler.compressionCodec, same(handler.shspSocket.compressionCodec));
       expect(handler.isClosed, isFalse);
     });
 
-    test('extractProfile and applyProfile work', () {
-      final profile = handler.extractProfile();
-      handler.applyProfile(profile);
+    test('extractProfile carries the registered callbacks', () {
+      final peer = PeerInfo(address: InternetAddress.loopbackIPv4, port: 9801);
+      final peerKey = MessageCallbackMap.formatKey(peer.address, peer.port);
+
+      void callback(MessageRecord _) {}
+      handler.setMessageCallback(peer, callback);
+
+      expect(handler.extractProfile().messageListeners.keys,
+          contains(peerKey));
+      expect(handler.removeMessageCallback(peer, callback), isTrue);
+      expect(handler.extractProfile().messageListeners.keys,
+          isNot(contains(peerKey)));
     });
 
     test('migrateSocket moves both halves onto the new socket', () async {
@@ -81,9 +92,10 @@ void main() {
       expect(dual.getSocket(InternetAddressType.IPv4)!.isClosed, isFalse);
     });
 
-    test('exposes the dual STUN handler', () {
+    test('exposes the dual STUN handler over the combined handlers', () {
       expect(dual.dualStunHandler, isA<DualStunHandler>());
-      expect(dual.dualStunHandler.ipv4Handler, isNotNull);
+      expect(dual.dualStunHandler.ipv4Handler, same(dual.ipv4StunShspHandler));
+      expect(dual.dualStunHandler.ipv6Handler, same(dual.ipv6StunShspHandler));
     });
 
     test('the STUN half is bound to the SHSP sockets', () {
