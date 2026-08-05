@@ -7,28 +7,56 @@ import 'package:stun_shsp/stun_shsp.dart';
 
 Future<void> stunShspHandlerConstructorExample() async {
   final socket = await ShspSocket.bindDefault(ipv6: false, port: 0);
-  final wrapper = ShspSocketWrapper(socket);
-  final handler = StunShspHandler(wrapper);
-  print('StunShspHandler created via constructor, port=${handler.shspSocket.localPort}');
+  final handler = StunShspHandler(ShspSocketMigratable(socket));
+  print('StunShspHandler created via constructor, '
+      'port=${handler.shspSocket.localPort}');
+  handler.close();
+}
+
+Future<void> stunShspHandlerConstructorWithStunServerExample() async {
+  final socket = await ShspSocket.bindDefault(ipv6: false, port: 0);
+  final handler = StunShspHandler(
+    ShspSocketMigratable(socket),
+    address: 'stun.cloudflare.com',
+    port: 3478,
+    timeout: const Duration(seconds: 3),
+  );
+  print('StunShspHandler created against an explicit STUN server, '
+      'port=${handler.shspSocket.localPort}');
   handler.close();
 }
 
 Future<void> stunShspHandlerCreateDefaultIpv4Example() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('createDefault(ipv6:false) bound to port ${handler.shspSocket.localPort}');
+  print('createDefault(ipv6:false) bound to port '
+      '${handler.shspSocket.localPort}');
   handler.close();
 }
 
 Future<void> stunShspHandlerCreateDefaultIpv6Example() async {
   final handler = await StunShspHandler.createDefault(ipv6: true);
-  print('createDefault(ipv6:true) bound to port ${handler.shspSocket.localPort}');
+  print('createDefault(ipv6:true) bound to port '
+      '${handler.shspSocket.localPort}');
   handler.close();
 }
 
 Future<void> stunShspHandlerCreateDefaultPortExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false, port: 3478);
-  print('createDefault(port:3478) bound to port ${handler.shspSocket.localPort}');
+  print('createDefault(port:3478) bound to port '
+      '${handler.shspSocket.localPort}');
   handler.close();
+}
+
+/// Everything left unset comes from the `stun_shsp` configuration sector.
+Future<void> stunShspHandlerCreateDefaultFromConfigExample() async {
+  initStunShspConfig({
+    'socket': {'ipv6': false, 'port': 0},
+  });
+  final handler = await StunShspHandler.createDefault();
+  print('createDefault() from config: ipVersion=${handler.getIpVersion()}, '
+      'port=${handler.shspSocket.localPort}');
+  handler.close();
+  initStunShspConfig();
 }
 
 Future<void> stunShspHandlerCreateDefaultCodecExample() async {
@@ -47,29 +75,29 @@ Future<void> stunShspHandlerCreateDefaultCodecExample() async {
 
 Future<void> stunShspHandlerStunHandlerGetterExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  final stun = handler.stunHandler;
-  print('stunHandler is ${stun.runtimeType}');
+  print('stunHandler is ${handler.stunHandler.runtimeType}');
   handler.close();
 }
 
 Future<void> stunShspHandlerShspSocketGetterExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  final socket = handler.shspSocket;
-  print('shspSocket localPort=${socket.localPort}');
+  print('shspSocket localPort=${handler.shspSocket.localPort}');
   handler.close();
 }
 
 Future<void> stunShspHandlerDelegateSocketGetterExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
   final ds = handler.delegateSocket;
-  print('delegateSocket localPort=${ds.localPort}, same as shspSocket=${identical(ds, handler.shspSocket)}');
+  print('delegateSocket localPort=${ds.localPort}, '
+      'same as shspSocket=${identical(ds, handler.shspSocket)}');
   handler.close();
 }
 
 Future<void> stunShspHandlerDelegateStunHandlerGetterExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
   final dsh = handler.delegateStunHandler;
-  print('delegateStunHandler is ${dsh.runtimeType}, same as stunHandler=${identical(dsh, handler.stunHandler)}');
+  print('delegateStunHandler is ${dsh.runtimeType}, '
+      'same as stunHandler=${identical(dsh, handler.stunHandler)}');
   handler.close();
 }
 
@@ -77,179 +105,150 @@ Future<void> stunShspHandlerDelegateStunHandlerGetterExample() async {
 // StunShspHandler — own methods
 // ============================================================================
 
+/// Migrating swaps the socket under both halves at once: the STUN handler was
+/// built on the migratable socket, not on the socket behind it.
 Future<void> stunShspHandlerMigrateSocketExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  final oldPort = handler.shspSocket.localPort;
-  final newSocket = await ShspSocket.bindDefault(ipv6: false, port: 0);
+  print('before migrate: shsp=${handler.localPort} '
+      'stun=${handler.getSocket().port}');
+
+  final newSocket = await ShspSocket.bindDefault(ipv6: false);
   handler.migrateSocket(newSocket);
-  print('migrateSocket: old port=$oldPort -> new port=${handler.shspSocket.localPort}');
+
+  print('after migrate:  shsp=${handler.localPort} '
+      'stun=${handler.getSocket().port}');
   handler.close();
 }
 
 Future<void> stunShspHandlerCloseExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
   handler.close();
-  print('close() called, isClosed=${handler.shspSocket.isClosed}');
+  print('close() -> isClosed=${handler.isClosed}');
 }
 
 Future<void> stunShspHandlerDestroyExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
   handler.destroy();
-  print('destroy() called, isClosed=${handler.shspSocket.isClosed}');
+  print('destroy() -> isClosed=${handler.isClosed}');
 }
 
 // ============================================================================
-// StunShspHandler — IStunHandlerDelegationMixin methods
+// StunShspHandler — StunHandlerDelegationMixin (the STUN half)
 // ============================================================================
 
 Future<void> stunShspHandlerPerformStunRequestExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  final response = await handler.performStunRequest();
-  print('performStunRequest: publicIp=${response.publicIp}, publicPort=${response.publicPort}, ipVersion=${response.ipVersion}');
+  try {
+    final response = await handler.performStunRequest();
+    final type = handler.getIpVersion();
+    print('performStunRequest -> '
+        '${response.publicIp(type)}:${response.publicPort(type)}');
+  } catch (e) {
+    print('performStunRequest failed (no network?): $e');
+  }
   handler.close();
 }
 
 Future<void> stunShspHandlerPerformLocalRequestExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  final info = await handler.performLocalRequest();
-  print('performLocalRequest: localIp=${info.localIp}, localPort=${info.localPort}');
+  final local = await handler.performLocalRequest();
+  print('performLocalRequest -> '
+      '${local.localIpv4}:${local.localPortIpv4}');
   handler.close();
 }
 
 Future<void> stunShspHandlerPingStunServerExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  final alive = await handler.pingStunServer();
-  print('pingStunServer: server reachable=$alive');
+  print('pingStunServer -> ${await handler.pingStunServer()}');
   handler.close();
 }
 
 Future<void> stunShspHandlerSetStunServerExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  handler.setStunServer('stun.l.google.com', 19302);
-  print('setStunServer: custom STUN server configured');
+  handler.setStunServer('stun.cloudflare.com', 3478);
+  print('setStunServer applied; ping -> ${await handler.pingStunServer()}');
   handler.close();
 }
 
 Future<void> stunShspHandlerGetSocketExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  final rawSocket = handler.getSocket();
-  print('getSocket: port=${rawSocket.port}');
+  print('getSocket() -> port=${handler.getSocket().port}, '
+      'getIpVersion() -> ${handler.getIpVersion()}');
   handler.close();
 }
 
 Future<void> stunShspHandlerLastStunUpdatedExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  await handler.performStunRequest();
-  print('lastStunUpdated: ${handler.lastStunUpdated}');
+  print('lastStunUpdated before any request -> ${handler.lastStunUpdated}');
   handler.close();
 }
 
 Future<void> stunShspHandlerLastLocalUpdatedExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
   await handler.performLocalRequest();
-  print('lastLocalUpdated: ${handler.lastLocalUpdated}');
-  handler.close();
-}
-
-Future<void> stunShspHandlerSocketRefreshCallbackExample() async {
-  final handler = await StunShspHandler.createDefault(ipv6: false);
-
-  void onRefresh(StunResponse newResponse, StunResponse? oldResponse) {
-    print('addOnSocketRefresh: new port=${newResponse.publicPort}');
-  }
-
-  handler.addOnSocketRefresh(onRefresh);
-  final newSocket = await ShspSocket.bindDefault(ipv6: false, port: 0);
-  handler.migrateSocket(newSocket);
-  handler.removeOnSocketRefresh(onRefresh);
-
+  print('lastLocalUpdated after a local request -> ${handler.lastLocalUpdated}');
   handler.close();
 }
 
 // ============================================================================
-// StunShspHandler — ShspSocketWrapperDelegationMixin properties / methods
+// StunShspHandler — ShspSocketMigratableDelegationMixin (the SHSP half)
 // ============================================================================
 
 Future<void> stunShspHandlerPortExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('port (RawDatagramSocket): ${handler.port}');
+  print('port=${handler.port}');
   handler.close();
 }
 
 Future<void> stunShspHandlerAddressExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('address (RawDatagramSocket): ${handler.address}');
+  print('address=${handler.address}');
   handler.close();
 }
 
-Future<void> stunShspHandlerBroadcastEnabledExample() async {
+Future<void> stunShspHandlerSocketFlagsExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('broadcastEnabled: ${handler.broadcastEnabled}');
-  handler.close();
-}
-
-Future<void> stunShspHandlerReadEventsEnabledExample() async {
-  final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('readEventsEnabled: ${handler.readEventsEnabled}');
-  handler.close();
-}
-
-Future<void> stunShspHandlerWriteEventsEnabledExample() async {
-  final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('writeEventsEnabled: ${handler.writeEventsEnabled}');
+  print('broadcastEnabled=${handler.broadcastEnabled} '
+      'readEventsEnabled=${handler.readEventsEnabled} '
+      'writeEventsEnabled=${handler.writeEventsEnabled}');
   handler.close();
 }
 
 Future<void> stunShspHandlerLocalAddressExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('localAddress: ${handler.localAddress}');
-  handler.close();
-}
-
-Future<void> stunShspHandlerLocalPortExample() async {
-  final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('localPort: ${handler.localPort}');
+  print('localAddress=${handler.localAddress} localPort=${handler.localPort}');
   handler.close();
 }
 
 Future<void> stunShspHandlerCompressionCodecExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('compressionCodec: ${handler.compressionCodec.runtimeType}');
+  print('compressionCodec=${handler.compressionCodec.runtimeType}');
   handler.close();
 }
 
 Future<void> stunShspHandlerIsClosedExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  print('isClosed (before close): ${handler.isClosed}');
+  print('isClosed=${handler.isClosed}');
   handler.close();
-  print('isClosed (after close): ${handler.isClosed}');
+  print('isClosed after close=${handler.isClosed}');
 }
 
-Future<void> stunShspHandlerExtractProfileExample() async {
-  final handler = await StunShspHandler.createDefault(ipv6: false);
-  final profile = handler.extractProfile();
-  print('extractProfile: ${profile.runtimeType}');
-  handler.close();
-}
-
-Future<void> stunShspHandlerApplyProfileExample() async {
+Future<void> stunShspHandlerProfileExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
   final profile = handler.extractProfile();
   handler.applyProfile(profile);
-  print('applyProfile: profile reapplied successfully');
+  print('extractProfile/applyProfile round-trip done');
   handler.close();
 }
 
 Future<void> stunShspHandlerRawSocketExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  final raw = handler.socket;
-  print('socket (RawDatagramSocket): port=${raw.port}, address=${raw.address}');
+  print('raw socket=${handler.socket.runtimeType} port=${handler.socket.port}');
   handler.close();
 }
 
 Future<void> stunShspHandlerSerializedObjectExample() async {
   final handler = await StunShspHandler.createDefault(ipv6: false);
-  final serialized = handler.serializedObject();
-  print('serializedObject: length=${serialized.length}');
+  print('serializedObject=${handler.serializedObject()}');
   handler.close();
 }

@@ -1,5 +1,7 @@
 import 'package:stun/stun.dart';
 
+import 'package:stun_shsp/src/config/stun_shsp_config.dart';
+
 typedef NatShspCompatibilityResult = ({
   NATType natType,
   NATFilteringBehavior filteringBehavior,
@@ -15,12 +17,19 @@ typedef NatShspCompatibilityResult = ({
 });
 
 class NATDetectorShsp extends NATDetector {
+  /// [primaryServer], [primaryPort] and [timeout] fall back to the
+  /// `nat` section of the `stun_shsp` configuration sector; see
+  /// [StunShspConfigExtension].
   NATDetectorShsp({
-    required super.primaryServer,
-    required super.primaryPort,
     required super.socket,
-    super.timeout,
-  });
+    String? primaryServer,
+    int? primaryPort,
+    Duration? timeout,
+  }) : super(
+          primaryServer: primaryServer ?? defaultStunShspNatPrimaryServer(),
+          primaryPort: primaryPort ?? defaultStunShspNatPrimaryPort(),
+          timeout: timeout ?? defaultStunShspNatTimeout(),
+        );
 
   Future<NatShspCompatibilityResult> natShspCompatibility() async {
     final result = await detectNATType();

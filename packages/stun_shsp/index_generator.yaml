@@ -9,10 +9,8 @@ index_generator:
       name: stun_shsp
       include:
         - src/**
-        - generated/**
+        - main_injection.dart
       exports:
         - package: package:stun/stun.dart
         - package: package:shsp/shsp.dart
         - package: package:singleton_manager/singleton_manager.dart
-          hide:
-            - RegistryManager

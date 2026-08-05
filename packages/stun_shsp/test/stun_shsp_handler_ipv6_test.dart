@@ -11,7 +11,6 @@ void main() async {
 
     tearDown(() {
       handler.destroy();
-      SingletonManager.instance.destroyAll();
     });
 
     test('createDefault with ipv6: true creates handler with IPv6', () async {
@@ -30,9 +29,21 @@ void main() async {
   group('StunShspHandler — IPv6 socket', () {
     test('IPv6 handler socket reports IPv6 address', () async {
       final handler = await StunShspHandler.createDefault(ipv6: true);
-      addTearDown(() => handler.destroy());
+      addTearDown(handler.destroy);
       expect(handler.shspSocket.localAddress?.type,
           equals(InternetAddressType.IPv6));
+      expect(handler.getIpVersion(), equals(InternetAddressType.IPv6));
+    });
+
+    test('the ipv6 default comes from the configuration', () async {
+      initStunShspConfig({
+        'socket': {'ipv6': false},
+      });
+      addTearDown(initStunShspConfig);
+
+      final handler = await StunShspHandler.createDefault();
+      addTearDown(handler.destroy);
+      expect(handler.getIpVersion(), equals(InternetAddressType.IPv4));
     });
   }, skip: hasIPv6 ? null : 'No IPv6 available on this host — IPv6 tests.');
 }

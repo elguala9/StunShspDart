@@ -4,157 +4,32 @@ import 'package:stun_shsp/stun_shsp.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('initializePointStunShsp — DI registrations', () {
+  group('IStunShspHandler — resolved from the registry', () {
+    const key = 'integration_single';
+    late IStunShspHandler handler;
+
     setUpAll(() async {
-      SingletonManager.instance.destroyAll();
-      await initializePointStunShsp();
+      await initializeStunShsp(key: key);
+      handler = RegistryManager.instance.getInstance<IStunShspHandler>(
+        key: key,
+        subkey: 'ipv4',
+      );
     });
 
     tearDownAll(() {
-      SingletonManager.instance.destroyAll();
+      if (!handler.isClosed) handler.destroy();
     });
 
-    test('registers IDualShspSocketMigratable in DI', () {
-      expect(
-        () => SingletonDIAccess.get<IDualShspSocketMigratable>(),
-        returnsNormally,
-      );
-    });
-
-    test('IDualShspSocketMigratable is a DualShspSocket', () {
-      expect(
-        SingletonDIAccess.get<IDualShspSocketMigratable>(),
-        isA<DualShspSocket>(),
-      );
-    });
-
-    test('ipv4Socket is not closed', () {
-      final dual = SingletonDIAccess.get<IDualShspSocketMigratable>();
-      expect(dual.ipv4Socket!.isClosed, isFalse);
-    });
-
-    test('ipv4Socket has an assigned local port', () {
-      final dual = SingletonDIAccess.get<IDualShspSocketMigratable>();
-      expect(dual.ipv4Socket!.localPort, greaterThan(0));
-    });
-
-    test('registers DualShspSocketWrapperDI in DI', () {
-      expect(
-        () => SingletonDIAccess.get<DualShspSocketWrapperDI>(),
-        returnsNormally,
-      );
-    });
-
-    test('DualShspSocketWrapperDI delegates to registered socket', () {
-      final wrapper = SingletonDIAccess.get<DualShspSocketWrapperDI>();
-      final dual = SingletonDIAccess.get<IDualShspSocketMigratable>();
-      expect(wrapper.ipv4Socket, same(dual.ipv4Socket));
-    });
-
-    test('registers IDualStunHandler in DI', () {
-      expect(
-        () => SingletonDIAccess.get<IDualStunHandler>(),
-        returnsNormally,
-      );
-    });
-
-    test('IDualStunHandler is a DualStunHandler', () {
-      expect(
-        SingletonDIAccess.get<IDualStunHandler>(),
-        isA<DualStunHandler>(),
-      );
-    });
-
-    test('IDualStunHandler.ipv4Handler is not null', () {
-      final stun = SingletonDIAccess.get<IDualStunHandler>();
-      expect(stun.ipv4Handler, isNotNull);
-    });
-
-    test('IPv6 SHSP socket is consistent with system IPv6 support', () async {
-      final hasIPv6 = await AddressUtility.canCreateIPv6Socket();
-      final dual = SingletonDIAccess.get<IDualShspSocketMigratable>();
-
-      if (hasIPv6) {
-        expect(dual.ipv6Socket, isNotNull);
-        expect(dual.ipv6Socket!.isClosed, isFalse);
-      } else {
-        expect(dual.ipv6Socket, isNull);
-      }
-    });
-
-    test('IPv6 STUN handler is consistent with system IPv6 support', () async {
-      final hasIPv6 = await AddressUtility.canCreateIPv6Socket();
-      final stun = SingletonDIAccess.get<IDualStunHandler>();
-
-      if (hasIPv6) {
-        expect(stun.ipv6Handler, isNotNull);
-      } else {
-        expect(stun.ipv6Handler, isNull);
-      }
-    });
-
-    test('registers IStunShspHandler in DI', () {
-      expect(
-        () => SingletonDIAccess.get<IStunShspHandler>(),
-        returnsNormally,
-      );
-    });
-
-    test('IStunShspHandler is a StunShspHandler', () {
-      expect(
-        SingletonDIAccess.get<IStunShspHandler>(),
-        isA<StunShspHandler>(),
-      );
-    });
-
-    test('same IStunShspHandler instance returned on repeated access', () {
-      final h1 = SingletonDIAccess.get<IStunShspHandler>();
-      final h2 = SingletonDIAccess.get<IStunShspHandler>();
-      expect(h1, same(h2));
-    });
-
-    test('IStunShspHandler.stunHandler is not null', () {
-      final handler = SingletonDIAccess.get<IStunShspHandler>();
-      expect(handler.stunHandler, isNotNull);
-    });
-
-    test('IStunShspHandler.shspSocket is not null', () {
-      final handler = SingletonDIAccess.get<IStunShspHandler>();
-      expect(handler.shspSocket, isNotNull);
-    });
-
-    test('IStunShspHandler.shspSocket is an IShspSocketWrapper', () {
-      final handler = SingletonDIAccess.get<IStunShspHandler>();
-      expect(handler.shspSocket, isA<IShspSocketWrapper>());
-    });
-
-    test('IStunShspHandler.shspSocket is not closed', () {
-      final handler = SingletonDIAccess.get<IStunShspHandler>();
+    test('is a StunShspHandler over an open socket', () {
+      expect(handler, isA<StunShspHandler>());
+      expect(handler.shspSocket, isA<IShspSocketMigratable>());
       expect(handler.shspSocket.isClosed, isFalse);
-    });
-
-    test('IStunShspHandler.shspSocket has a valid local port', () {
-      final handler = SingletonDIAccess.get<IStunShspHandler>();
       expect(handler.shspSocket.localPort, greaterThan(0));
     });
 
-    test('delegateSocket matches shspSocket', () {
-      final handler = SingletonDIAccess.get<IStunShspHandler>() as StunShspHandler;
-      expect(handler.delegateSocket, same(handler.shspSocket));
-    });
-  });
-
-  group('IStunShspHandler — RawDatagramSocket delegation via mixin', () {
-    late IStunShspHandler handler;
-
-    setUp(() async {
-      SingletonManager.instance.destroyAll();
-      await initializePointStunShsp();
-      handler = SingletonDIAccess.get<IStunShspHandler>();
-    });
-
-    tearDown(() {
-      SingletonManager.instance.destroyAll();
+    test('both halves are reachable', () {
+      expect(handler.stunHandler, isNotNull);
+      expect(handler.getSocket().port, equals(handler.shspSocket.localPort));
     });
 
     test('RawDatagramSocket properties are accessible', () {
@@ -163,7 +38,7 @@ void main() {
       expect(handler.broadcastEnabled, isA<bool>());
     });
 
-    test('Socket properties are accessible', () {
+    test('socket properties are accessible', () {
       expect(handler.localAddress, isNotNull);
       expect(handler.localPort, greaterThan(0));
       expect(handler.compressionCodec, isNotNull);
@@ -173,15 +48,67 @@ void main() {
     test('extractProfile and applyProfile work', () {
       final profile = handler.extractProfile();
       handler.applyProfile(profile);
-      // should not throw
     });
 
-    test('migrateSocket changes the delegate', () async {
+    test('migrateSocket moves both halves onto the new socket', () async {
       final newSocket = await ShspSocket.bindDefault(ipv6: false);
       handler.migrateSocket(newSocket);
-      // after migration, the wrapper delegates to the new socket
+
       expect(handler.isClosed, isFalse);
-      newSocket.close();
+      expect(handler.localPort, equals(newSocket.localPort));
+      expect(handler.getSocket().port, equals(newSocket.localPort));
+    });
+  });
+
+  group('IDualStunShspHandler — resolved from the registry', () {
+    const key = 'integration_dual';
+    late IDualStunShspHandler dual;
+
+    setUpAll(() async {
+      await initializeStunShsp(key: key);
+      dual = RegistryManager.instance.getInstance<IDualStunShspHandler>(
+        key: key,
+      );
+    });
+
+    tearDownAll(() {
+      if (!dual.isClosed) dual.destroy();
+    });
+
+    test('is a dual SHSP socket', () {
+      expect(dual, isA<DualShspSocket>());
+      expect(dual.getSocket(InternetAddressType.IPv4), isNotNull);
+      expect(dual.getSocket(InternetAddressType.IPv4)!.isClosed, isFalse);
+    });
+
+    test('exposes the dual STUN handler', () {
+      expect(dual.dualStunHandler, isA<DualStunHandler>());
+      expect(dual.dualStunHandler.ipv4Handler, isNotNull);
+    });
+
+    test('the STUN half is bound to the SHSP sockets', () {
+      expect(
+        dual.dualStunHandler.getSocket(type: InternetAddressType.IPv4).port,
+        equals(dual.getSocket(InternetAddressType.IPv4)!.localPort),
+      );
+    });
+
+    test('the IPv6 half follows what the host supports', () async {
+      final hasIPv6 = await AddressUtility.canCreateIPv6Socket();
+      if (hasIPv6) {
+        expect(dual.getSocket(InternetAddressType.IPv6), isNotNull);
+        expect(dual.ipv6StunShspHandler, isNotNull);
+      } else {
+        expect(dual.getSocket(InternetAddressType.IPv6), isNull);
+        expect(dual.ipv6StunShspHandler, isNull);
+      }
+    });
+
+    test('repeated resolution returns the cached singleton', () {
+      expect(
+        RegistryManager.instance.getInstance<IDualStunShspHandler>(key: key),
+        same(dual),
+      );
     });
   });
 }

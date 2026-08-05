@@ -1,3 +1,33 @@
+## 0.4.0
+
+### Changed — breaking
+
+Ported the package to the current `shsp`, `stun` and `singleton_manager` 2.x APIs, adopting the same architecture as those packages (config sector, `@dependencyInjectable` classes with generated factories, a generated `main_injection.dart`, registry wiring helpers).
+
+- The socket "wrapper" is gone, following `shsp`: `IShspSocketWrapper`/`ShspSocketWrapper` become `IShspSocketMigratable`/`ShspSocketMigratable`, and `ShspSocketWrapperDelegationMixin` becomes `ShspSocketMigratableDelegationMixin`. `IStunShspHandler.shspSocket` is now an `IShspSocketMigratable`.
+- Dual-stack selection is by `InternetAddressType` instead of a `bool ipv6`, following `stun`: `close({type})`, `setStunServer(address, port, {type})`, `getHandler/setHandler/clearHandler/replaceHandler({type})`, `getLastStunUpdated({type})`, `migrateSocket(socket, [type])`, `getSocket([type])`.
+- `DualStunShspHandler` now extends `DualShspSocketAuto` and implements `IDualShspSocketAuto` only. It is no longer an `IDualStunHandler`, because `IDualStunHandler.getSocket({type})` and `IDualShspSocket.getSocket([type])` cannot both be satisfied by one member; the dual STUN handler is exposed as `dualStunHandler`, and the rest of its surface is forwarded by the new `DualStunHandlerDelegationMixin`. Its per-family handlers are `ipv4StunShspHandler`/`ipv6StunShspHandler`/`getStunShspHandler([type])` and are nullable, since a host without IPv6 binds one socket only.
+- `initializePointStunShsp()` and `initializePointRegistryStunShsp(key)` are replaced by `initializeStunShsp({key})`, `StunShspInjector` and `connectStunShspHandlerSubkeys({key})`, on `RegistryManager.instance` instead of `SingletonDIAccess`/`RegistryAccess`. Everything is keyed, so the two entry points collapse into one. `StunShspInjector` wires all three graphs from its before hooks — `DualShspInjector` (which binds the ipv4/ipv6 `RawDatagramSocket`s) and then `registerAllSingletonsStun` — so the STUN graph of the `stun` package resolves onto the very same sockets as the SHSP one. `DualStunInjector` is deliberately not used: it would bind sockets of its own and overwrite those connections.
+- `lib/generated/stun_shsp_handler_di.dart` is replaced by the generated `lib/main_injection.dart` (`MainInjectionStunShspMixin.registerAllSingletonsStunShsp`). Both handlers are now `@dependencyInjectable` and carry a generated `dependencyInjectionFactory`.
+- The mixins are renamed after the `shsp` convention: `IStunHandlerDelegationMixin` → `StunHandlerDelegationMixin`, `IDualStunHandlerDelegationMixin` → `DualStunHandlerDelegationMixin`. They no longer forward the members that the new STUN API dropped (`addOnSocketRefresh`/`removeOnSocketRefresh`, `initializeDI`, `setIpv4Handler`/`clearIpv4Handler`, `ipv4LastStunUpdated` and friends) and now forward `getIpVersion()`.
+- Neither interface implements `IValueForRegistry` any more — it no longer exists in `singleton_manager` 2.x.
+- Sources moved to `lib/src/implementations/` (was the misspelled `imlementations/`), with `lib/src/nat/` and `lib/src/registry/` next to it, mirroring the `stun` package layout.
+
+### Added
+
+- `config_manager`-based configuration, following the same architecture as the `stun` and `shsp` packages: the `stun_shsp` sector, `defaultStunShspConfig`, `initStunShspConfig()` / `ensureStunShspConfig()`, `unwrapStunShspConfig()` / `mergeStunShspConfig()`, the `StunShspConfigExtension` mixin with typed getters, and static-context helpers (`defaultStunShspIpv6Enabled()`, `defaultStunShspPort()`, `defaultStunShspIpv4Port()`, `defaultStunShspIpv6Port()`, `defaultStunShspNatPrimaryServer()`, `defaultStunShspNatPrimaryPort()`, `defaultStunShspNatTimeout()`, `stunShspConfigValue()`).
+- Test coverage for the configuration defaults, the deep-merge of overrides, the nested-document form, and the static-context helpers (`stun_shsp_config_test.dart`), for the registry wiring (`stun_shsp_registry_wiring_test.dart`) and for the dual handler (`dual_stun_shsp_handler_test.dart`).
+- `StunShspHandler(socket, {address, port, timeout, onLog})` takes the STUN server and timeout, so a handler no longer has to be built against the configured server and then reconfigured.
+- `DualStunShspHandler.fromSockets(Sockets)`, which wraps plain sockets into migratable ones.
+- Registry-level socket migration, the counterpart of `migrateShspSocket`/`migrateStunHandlerSocket` in the `shsp` and `stun` packages and delegating to both: `migrateStunShspSocket(socket, {key})`, `migrateStunShspSocketIpv4({key})` / `migrateStunShspSocketIpv6({key})`, `migrateDualStunShspSockets({ipv4Socket, ipv6Socket, key})` and `migrateStunHandlerEntry(socket, {key})`. The handlers and the migratable wrapper are never replaced — only the `RawDatagramSocket`/`IShspSocket` entries and the plain `IStunHandler` of the STUN graph move — so `IStunShspHandler`, `IDualStunShspHandler` and every peer holding them keep working across a swap. Covered by `stun_shsp_socket_migration_test.dart`.
+- Examples for the configuration (`config_example.dart`), the registry wiring (`registry_example.dart`) and the socket migration (`socket_migration_example.dart`); the other examples were rewritten against the new API.
+
+### Changed
+
+- `StunShspHandler.createDefault()` (`ipv6`, `port`), `DualStunShspHandler.createDefault()` (`ipv4Port`, `ipv6Port`) and `NATDetectorShsp` (`primaryServer`, `primaryPort`, `timeout`) take those parameters as optional and fall back to the configuration instead of hardcoded values. `NATDetectorShsp.primaryServer` and `primaryPort` are no longer required.
+- `DualStunShspHandler.createDefault()` binds IPv6 best-effort instead of failing on hosts without it.
+- The STUN handler is built on the migratable socket rather than on the socket behind it, so a `migrateSocket` moves both halves at once and `getSocket()` reports the new port.
+
 ## 0.3.0
 
 ### Added

@@ -13,7 +13,6 @@ void main() {
 
     tearDown(() {
       socket.close();
-      SingletonManager.instance.destroyAll();
     });
 
     test('creates a NATDetectorShsp with required parameters', () {
@@ -35,6 +34,23 @@ void main() {
       );
       expect(detector, isA<NATDetectorShsp>());
     });
+
+    test('server and timeout default to the configuration', () {
+      initStunShspConfig({
+        'nat': {
+          'primaryServer': 'stun.example.org',
+          'primaryPort': 3478,
+          'timeoutSeconds': 9.0,
+        },
+      });
+      addTearDown(initStunShspConfig);
+
+      final detector = NATDetectorShsp(socket: socket);
+
+      expect(detector.primaryServer, 'stun.example.org');
+      expect(detector.primaryPort, 3478);
+      expect(detector.timeout, const Duration(seconds: 9));
+    });
   });
 
   group('NATDetectorShsp — natShspCompatibility()', () {
@@ -53,7 +69,6 @@ void main() {
 
     tearDown(() {
       socket.close();
-      SingletonManager.instance.destroyAll();
     });
 
     test('returns a NatShspCompatibilityResult', () async {

@@ -2,7 +2,14 @@ import 'dart:io';
 
 import 'package:stun/stun.dart';
 
-mixin IStunHandlerDelegationMixin implements IStunHandler {
+/// Forwards the whole [IStunHandler] surface to [delegateStunHandler].
+///
+/// Mixed in next to `ShspSocketMigratableDelegationMixin`, it turns a class
+/// that already is an SHSP socket into an [IStunHandler] as well. Both mixins
+/// declare `close()`: the mixing class has to override it and decide what
+/// closing means for the pair.
+mixin StunHandlerDelegationMixin implements IStunHandler {
+  /// STUN handler provided by the mixing class.
   IStunHandler get delegateStunHandler;
 
   @override
@@ -24,6 +31,9 @@ mixin IStunHandlerDelegationMixin implements IStunHandler {
   RawDatagramSocket getSocket() => delegateStunHandler.getSocket();
 
   @override
+  InternetAddressType getIpVersion() => delegateStunHandler.getIpVersion();
+
+  @override
   void close() => delegateStunHandler.close();
 
   @override
@@ -31,12 +41,4 @@ mixin IStunHandlerDelegationMixin implements IStunHandler {
 
   @override
   DateTime? get lastLocalUpdated => delegateStunHandler.lastLocalUpdated;
-
-  @override
-  void addOnSocketRefresh(OnSocketRefresh callback) =>
-      delegateStunHandler.addOnSocketRefresh(callback);
-
-  @override
-  void removeOnSocketRefresh(OnSocketRefresh callback) =>
-      delegateStunHandler.removeOnSocketRefresh(callback);
 }

@@ -16,7 +16,6 @@ void main() {
 
     tearDown(() {
       handler.close();
-      SingletonManager.instance.destroyAll();
     });
 
     test('SHSP socket binds via createDefault', () async {
@@ -32,6 +31,12 @@ void main() {
     test('stunHandler is accessible after createDefault', () async {
       handler = await StunShspHandler.createDefault(ipv6: false);
       expect(handler.stunHandler, isNotNull);
+    });
+
+    test('the STUN half is bound to the SHSP socket', () async {
+      handler = await StunShspHandler.createDefault(ipv6: false);
+      expect(handler.getSocket().port, equals(handler.shspSocket.localPort));
+      expect(handler.getIpVersion(), InternetAddressType.IPv4);
     });
 
     test('createDefault with explicit port', () async {
@@ -55,9 +60,9 @@ void main() {
       expect(handler.shspSocket.isClosed, isTrue);
     });
 
-    test('shspSocket is of type IShspSocketWrapper', () async {
+    test('shspSocket is an IShspSocketMigratable', () async {
       handler = await StunShspHandler.createDefault(ipv6: false);
-      expect(handler.shspSocket, isA<IShspSocketWrapper>());
+      expect(handler.shspSocket, isA<IShspSocketMigratable>());
     });
 
     test('delegateSocket matches shspSocket', () async {
@@ -96,11 +101,16 @@ void main() {
       handler.applyProfile(profile);
     });
 
-    test('migrateSocket is available', () async {
+    test('migrateSocket moves both halves onto the new socket', () async {
       handler = await StunShspHandler.createDefault(ipv6: false);
       final newSocket = await ShspSocket.bindDefault(ipv6: false);
       handler.migrateSocket(newSocket);
+
       expect(handler.isClosed, isFalse);
+      expect(handler.localPort, equals(newSocket.localPort));
+      // The STUN half was built on the migratable socket, not on the socket
+      // behind it, so it follows the swap.
+      expect(handler.getSocket().port, equals(newSocket.localPort));
     });
   });
 }
