@@ -1,3 +1,9 @@
+## 0.5.0
+
+### Fixed
+
+- The `stun_shsp` barrel no longer re-exports `stun`'s `@internal` mixins (`StunHandlerMixin`, `DualStunHandlerMixin`, `NATDetectorMixin`, `StunLoggerMixin`, `StunMessageMixin`, `StunServerResolverMixin`, `HandlerFactoryMixin`, `HandlerSelectorMixin`, `DestroyableHandlerMixin`, `DualHandlerDelegationMixin`, `DualStunHandlerMigratableMixin`, `NATTestResult`), which tripped `invalid_export_of_internal_element` under `dart analyze --fatal-infos`. They were implementation details of the `stun` package that nothing here used.
+
 ## 0.4.0
 
 ### Changed — breaking

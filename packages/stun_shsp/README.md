@@ -16,7 +16,7 @@ A Dart package that combines the [STUN](https://pub.dev/packages/stun) and [SHSP
 
 ```yaml
 dependencies:
-  stun_shsp: ^0.4.0
+  stun_shsp: ^0.5.0
 ```
 
 ```sh
