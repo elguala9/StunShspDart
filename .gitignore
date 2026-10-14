@@ -45,3 +45,6 @@ Thumbs.db
 .serena/
 .*
 .speedy/
+
+# Local dependency overrides (not versioned)
+pubspec_overrides.yaml
